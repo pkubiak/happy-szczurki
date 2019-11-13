@@ -1,6 +1,6 @@
-# happy-szczurki
+# :rat: happy-szczurki
 
-## Material to read ##
+## Materials to read ##
 
 ### General ###
 1. https://medium.com/@etown/great-results-on-audio-classification-with-fastai-library-ccaf906c5f52
