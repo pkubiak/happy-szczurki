@@ -19,3 +19,6 @@
 
 #### Parallel Recognition ####
 1. https://www.sciencedirect.com/science/article/pii/S0003682X16305254
+
+#### LSTM ####
+1. https://www.depends-on-the-definition.com/guide-sequence-tagging-neural-networks-python/
