@@ -4,6 +4,12 @@
 
 ### Types of Ultrasonic Vocalizations ###
 
+> Ultrasonic vocalizations (USVs) have been observed in a number of rodent species (Sales 1972). In adult laboratory rats,
+two main types of USVs have been described: 22-kHz and 50-kHz calls (see Brudzynski 2009 for review). The **22-kHz
+call type has been termed a distress or “alarm” vocalization** (Litvin et al. 2007), as it can be elicited by the presentation of a predator, painful stimuli, startling noises, and intermale aggression (Blanchard et al. 1991; Calvino et al. 1996; Han et al. 2005; Kaltwasser 1991; Thomas et al. 1983). In contrast, calls of the **50-kHz category have been detected in naturalistic appetitive contexts**, such as during play, mating behavior, exploratory activity, or in anticipation of food reward (Burgdorf et al. 2000; Knutson et al. 1998; Sales 1972). 50-kHz calls have also been elicited by several non-natural appetitive stimuli, particularly rewarding electrical brain stimulation and amphetamine (AMPH) administration (Ahrens et al. 2009; Burgdorf et al. 2000, 2001a, 2007; Simola et al. 2009; Thompson et al. 2006; Wintink and Brudzynski 2001). Of note, the 50-kHz class of calls encompasses a wide frequency range (30–90 kHz) (Kaltwasser 1990; Sales and Pye 1974), and these calls vary considerably in spectrographic structure
+>> Identification of multiple call categories within the rich repertoire of adult rat 50-kHz ultrasonic vocalizations: effects of amphetamine and social context
+
+- https://link.springer.com/article/10.1007%2Fs00213-010-1859-y
 - https://www.nature.com/articles/s41598-019-44221-3
 
 ![](https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41598-019-44221-3/MediaObjects/41598_2019_44221_Fig4_HTML.png?as=webp)
@@ -22,12 +28,10 @@
 | RM | ??? | |
 
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4598429/
-- 
 
 ## Existing solutions :cry: ##
 
 - https://github.com/DrCoffey/DeepSqueak
-- 
 
 ## Materials to read ##
 
