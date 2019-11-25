@@ -9,19 +9,20 @@
 ![](https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41598-019-44221-3/MediaObjects/41598_2019_44221_Fig4_HTML.png?as=webp)
 ![](https://www.researchgate.net/profile/Maria_Luisa_Scattoni/publication/23195427/figure/fig14/AS:340731513327618@1458248131236/Typical-sonograms-of-ultrasonic-vocalizations-classified-into-ten-distinct-categories-of.png)
 
-['SH', 'FM', 'RP', 'FL', 'ST', 'CMP', 'IU', 'TR', 'RM']
+| code name | meaning | description |
+|-----------|---------|-------------|
+| SH | Short | USVs with duration of less than 12 ms | 
+| FM | ??? | |
+| RP | Upward/Downward Ramp ? | USVs displaying a monotonic increase/decreasing in frequency |
+| FL | Flat | USVs bearing a near-constant frequency |  
+| ST | ??? | |
+| CMP | ??? | |
+| IU | Inverted U / chevron | USVs possessing a monotonic increase in frequency followed by a monotonic decrease in frequency, resembling the shape of an inverted U |
+| TR | Trill | USVs displaying a rapid frequency oscillation, usually appearing as a sinusoid oscillation |
+| RM | ??? | |
 
-| code name | meaning |
-|-----------|-------------|
-| SH | short | 
-| FM | ??? | 
-| RP | ??? | 
-| FL | flat | 
-| ST | ??? | 
-| CMP | ??? | 
-| IU | ??? | 
-| TR | ??? | 
-| RM | ??? | 
+- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4598429/
+- 
 
 ## Existing solutions :cry: ##
 
