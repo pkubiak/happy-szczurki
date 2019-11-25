@@ -1,5 +1,33 @@
 # :rat: happy-szczurki
 
+## Knowledge :mortar_board: ##
+
+### Types of Ultrasonic Vocalizations ###
+
+- https://www.nature.com/articles/s41598-019-44221-3
+
+![](https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41598-019-44221-3/MediaObjects/41598_2019_44221_Fig4_HTML.png?as=webp)
+![](https://www.researchgate.net/profile/Maria_Luisa_Scattoni/publication/23195427/figure/fig14/AS:340731513327618@1458248131236/Typical-sonograms-of-ultrasonic-vocalizations-classified-into-ten-distinct-categories-of.png)
+
+['SH', 'FM', 'RP', 'FL', 'ST', 'CMP', 'IU', 'TR', 'RM']
+
+| code name | meaning |
+|-----------|-------------|
+| SH | short | 
+| FM | ??? | 
+| RP | ??? | 
+| FL | flat | 
+| ST | ??? | 
+| CMP | ??? | 
+| IU | ??? | 
+| TR | ??? | 
+| RM | ??? | 
+
+## Existing solutions :cry: ##
+
+- https://github.com/DrCoffey/DeepSqueak
+- 
+
 ## Materials to read ##
 
 ### General ###
