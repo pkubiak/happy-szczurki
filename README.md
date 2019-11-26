@@ -1,5 +1,38 @@
 # :rat: happy-szczurki
 
+## Knowledge :mortar_board: ##
+
+### Types of Ultrasonic Vocalizations ###
+
+> Ultrasonic vocalizations (USVs) have been observed in a number of rodent species (Sales 1972). In adult laboratory rats,
+two main types of USVs have been described: 22-kHz and 50-kHz calls (see Brudzynski 2009 for review). The **22-kHz
+call type has been termed a distress or “alarm” vocalization** (Litvin et al. 2007), as it can be elicited by the presentation of a predator, painful stimuli, startling noises, and intermale aggression (Blanchard et al. 1991; Calvino et al. 1996; Han et al. 2005; Kaltwasser 1991; Thomas et al. 1983). In contrast, calls of the **50-kHz category have been detected in naturalistic appetitive contexts**, such as during play, mating behavior, exploratory activity, or in anticipation of food reward (Burgdorf et al. 2000; Knutson et al. 1998; Sales 1972). 50-kHz calls have also been elicited by several non-natural appetitive stimuli, particularly rewarding electrical brain stimulation and amphetamine (AMPH) administration (Ahrens et al. 2009; Burgdorf et al. 2000, 2001a, 2007; Simola et al. 2009; Thompson et al. 2006; Wintink and Brudzynski 2001). Of note, the 50-kHz class of calls encompasses a wide frequency range (30–90 kHz) (Kaltwasser 1990; Sales and Pye 1974), and these calls vary considerably in spectrographic structure
+>> Identification of multiple call categories within the rich repertoire of adult rat 50-kHz ultrasonic vocalizations: effects of amphetamine and social context
+
+- https://link.springer.com/article/10.1007%2Fs00213-010-1859-y
+- https://www.nature.com/articles/s41598-019-44221-3
+
+![](https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41598-019-44221-3/MediaObjects/41598_2019_44221_Fig4_HTML.png?as=webp)
+![](https://www.researchgate.net/profile/Maria_Luisa_Scattoni/publication/23195427/figure/fig14/AS:340731513327618@1458248131236/Typical-sonograms-of-ultrasonic-vocalizations-classified-into-ten-distinct-categories-of.png)
+
+| code name | meaning | description |
+|-----------|---------|-------------|
+| SH | Short | USVs with duration of less than 12 ms | 
+| FM | ??? | |
+| RP | Upward/Downward Ramp ? | USVs displaying a monotonic increase/decreasing in frequency |
+| FL | Flat | USVs bearing a near-constant frequency |  
+| ST | ??? | |
+| CMP | ??? | |
+| IU | Inverted U / chevron | USVs possessing a monotonic increase in frequency followed by a monotonic decrease in frequency, resembling the shape of an inverted U |
+| TR | Trill | USVs displaying a rapid frequency oscillation, usually appearing as a sinusoid oscillation |
+| RM | ??? | |
+
+- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4598429/
+
+## Existing solutions :cry: ##
+
+- https://github.com/DrCoffey/DeepSqueak
+
 ## Materials to read ##
 
 ### General ###
@@ -19,3 +52,6 @@
 
 #### Parallel Recognition ####
 1. https://www.sciencedirect.com/science/article/pii/S0003682X16305254
+
+#### LSTM ####
+1. https://www.depends-on-the-definition.com/guide-sequence-tagging-neural-networks-python/
