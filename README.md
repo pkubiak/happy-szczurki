@@ -29,6 +29,15 @@ call type has been termed a distress or “alarm” vocalization** (Litvin et al
 
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4598429/
 
+## Results ##
+| model | train set | test set | f1-score | accuracy |
+|-------|-----------|----------|----------|----------|
+| SVC   |           |          |          |          |
+| RandomForestClassifier | | | | | 
+| CNN ? | | | | 
+| LSTM? | | | |
+
+
 ## Existing solutions :cry: ##
 
 - https://github.com/DrCoffey/DeepSqueak
