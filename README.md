@@ -42,6 +42,10 @@ Detecting time intervals which contains USVs.
 | CNN | | | | 
 | LSTM | | | |
 
+- TODO: share pickle models
+- TODO: what is used weighting function?
+- TODO: masking training ?
+
 ### :dart: USVs' boundaries detection ###
 Detecting time and frequency intervals (bounding box) which contains USVs.
 
