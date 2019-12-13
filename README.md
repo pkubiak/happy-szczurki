@@ -1,6 +1,6 @@
 # :rat: happy-szczurki
 
-## Knowledge :mortar_board: ##
+## :mortar_board: Knowledge  ##
 
 ### Types of Ultrasonic Vocalizations ###
 
@@ -29,7 +29,7 @@ call type has been termed a distress or “alarm” vocalization** (Litvin et al
 
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4598429/
 
-## Results ##
+## :chart_with_upwards_trend: Results ##
 | model | train set | test set | f1-score | precision | recall |
 |-------|-----------|----------|----------|----------|--------|
 | SVC   | ch1-2018-11-20_10-29-02_0000012.wav.npz | ch1-2018-11-20_10-26-36_0000010.wav.npz | 0.92 | 0.92 | 0.91 |
@@ -39,11 +39,11 @@ call type has been termed a distress or “alarm” vocalization** (Litvin et al
 | LSTM? | | | |
 
 
-## Existing solutions :cry: ##
+## :cry: Existing solutions ##
 
 - https://github.com/DrCoffey/DeepSqueak
 
-## Materials to read ##
+## :books: Materials to read ##
 
 ### General ###
 1. https://medium.com/@etown/great-results-on-audio-classification-with-fastai-library-ccaf906c5f52
