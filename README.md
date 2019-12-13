@@ -30,13 +30,27 @@ call type has been termed a distress or “alarm” vocalization** (Litvin et al
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4598429/
 
 ## :chart_with_upwards_trend: Results ##
-| model | train set | test set | f1-score | precision | recall |
+
+### :dart: USVs detection ###
+Detecting time intervals which contains USVs. 
+
+| model type | train set | test set | f1-score | precision | recall |
 |-------|-----------|----------|----------|----------|--------|
 | SVC   | ch1-2018-11-20_10-29-02_0000012.wav.npz | ch1-2018-11-20_10-26-36_0000010.wav.npz | 0.92 | 0.92 | 0.91 |
 | SVC   | ch1-2018-11-20_10-29-02_0000012.wav.trimed.npz | ch1-2018-11-20_10-26-36_0000010.wav.trimed.npz | 0.93 | 0.94 | 0.93 |
 | RandomForestClassifier |  | | | | 
-| CNN ? | | | | 
-| LSTM? | | | |
+| CNN | | | | 
+| LSTM | | | |
+
+### :dart: USVs' boundaries detection ###
+Detecting time and frequency intervals (bounding box) which contains USVs.
+
+#### TBD ####
+
+### :dart: USVs classification ###
+Assigning one of USV types to each detected box.
+
+#### TBD ####
 
 
 ## :cry: Existing solutions ##
