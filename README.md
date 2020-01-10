@@ -1,5 +1,12 @@
 # :rat: happy-szczurki
 
+## :rocket: Installation ##
+
+At first install `happy_szczurki` package:
+```
+pip install -e .
+```
+
 ## :mortar_board: Knowledge  ##
 
 ### Types of Ultrasonic Vocalizations ###
