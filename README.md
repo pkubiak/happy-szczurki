@@ -39,6 +39,7 @@ Detecting time intervals which contains USVs.
 | SVC   | ch1-2018-11-20_10-29-02_0000012.wav.npz | ch1-2018-11-20_10-26-36_0000010.wav.npz | 0.92 | 0.92 | 0.91 |
 | SVC   | ch1-2018-11-20_10-29-02_0000012.wav.trimed.npz | ch1-2018-11-20_10-26-36_0000010.wav.trimed.npz | 0.93 | 0.94 | 0.93 |
 | RandomForestClassifier |  | | | | 
+| XGBClassifier | | | | | 
 | CNN | | | | 
 | LSTM | | | |
 

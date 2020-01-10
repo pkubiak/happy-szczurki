@@ -1,3 +1,7 @@
+data/orginal/*
+data/converted/*
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
