@@ -69,4 +69,16 @@ for epoch in range(20):
 
 # TODO: tesotwanie
 
+test_dataset = Dataset('data/converted/ch1-2018-11-20_10-29-02_0000012.wav.npz')
+
+X_all_test, y_all_test = test_dataset.sample(test_dataset.X.shape[0] // 100, balanced=False, x_with_frame=True, use_mapping=mapping)
+for i in range((X_all_test.shape[0] // N) - 1):
+    i = i * N
+    X, y = X_all_test[i:i + N], y_all_test[i:i + N]
+    X = resize(X, (N,) + input_shape[1:])
+    X = X.reshape(-1, *input_shape)
+    y = torch.from_numpy(y).long()
+    
+    print(net.score(X, y))
+    
 # TODO: plotowanie lossów
