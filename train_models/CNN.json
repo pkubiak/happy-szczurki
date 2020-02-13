@@ -1,0 +1,38 @@
+
+{
+"layer_params": [
+    {
+        "output_size": 32,
+        "kernel_size": 5,
+        "stride": 1,
+        "padding": 2,
+        "max_pool_kernel": 3,
+        "max_pool_stride": 2
+    },
+    {
+        "output_size": 64,
+        "kernel_size": 5,
+        "stride": 1,
+        "padding": 2,
+        "max_pool_kernel": 2,
+        "max_pool_stride": 2
+    },
+    {
+        "output_size": 128,
+        "kernel_size": 5,
+        "stride": 1,
+        "padding": 2,
+        "max_pool_kernel": 5,
+        "max_pool_stride": 3
+    },
+    {
+        "output_size": 256,
+        "kernel_size": 5,
+        "stride": 1,
+        "padding": 2,
+        "max_pool_kernel": 5,
+        "max_pool_stride": 2
+    }
+],
+"hidden_dims": ["16384‬","100","9"]
+}
