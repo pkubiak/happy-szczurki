@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Tuple
+from typing import Tuple, Optional, Dict
 
 import librosa
 import librosa.display
@@ -34,7 +34,7 @@ class Dataset:
 
         return mean, std
 
-    def sample(self, n, *, balanced=False, with_idx=False, random_state=None, x_with_frame=False) -> Tuple[
+    def sample(self, n, *, balanced=False, with_idx=False, random_state=None, x_with_frame=False, use_mapping: Optional[Dict[Optional[str], int]] = None) -> Tuple[
         np.ndarray, np.ndarray]:
         """
         Choice `n` random samples from dataset.
@@ -43,6 +43,7 @@ class Dataset:
         @param balanced: if True number of samples for each class will be aprox. equal,
         @param with_idx: return data indexes of sampled records,
         @param random_state: random state used to generate samples indices,
+        @param use_mapping: map label into ints
         """
         assert len(self.y.shape) == 1
 
@@ -64,10 +65,14 @@ class Dataset:
         else:
             X = new_X[idx + 128]
 
-        if with_idx:
-            return idx, X, self.y[idx]
+        labels  = self.y[idx]
+        if use_mapping:
+            labels = np.array([use_mapping[label] for label in labels])
 
-        return X, self.y[idx]
+        if with_idx:
+            return idx, X, labels
+
+        return X, labels
 
     def frame_to_time(self, frame: int) -> float:
         """Convert frame id to time in sec."""
