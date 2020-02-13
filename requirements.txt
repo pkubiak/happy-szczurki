@@ -7,3 +7,5 @@ matplotlib
 seaborn
 scipy
 notebook
+torch
+skorch
