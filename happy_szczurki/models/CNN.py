@@ -4,8 +4,8 @@ import torch.nn as nn
 
 def calculate_output_size(input_size, layer):
     data_size = (1, ) + input_size  # 1 represents batch size
-    print(data_size)
     out = layer(torch.zeros(data_size))
+    
     return out.size()
 
 
@@ -47,6 +47,8 @@ class ConvNet(nn.Module):
             layers.append(
                 nn.Linear(in_size, out_size)
             )
+
+        layers.append(nn.Softmax(dim=1))
 
         self.layers = nn.Sequential(*layers)
 
