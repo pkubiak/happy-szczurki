@@ -1,5 +1,6 @@
 import pickle
 import argparse
+from tqdm import tqdm
 from datetime import datetime
 
 from happy_szczurki.models.CNN import ConvNet
@@ -54,7 +55,7 @@ def load_trained_model(path):
 def build_new_model(args):
     net = NeuralNetClassifier(
         ConvNet,
-        max_epochs=5,
+        max_epochs=1,
         lr=0.001,
         train_split=CVSplit(3, stratified=False),
         optimizer=torch.optim.Adam
@@ -110,12 +111,26 @@ def vizualize_history(model):
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument('action', choices=['train', 'test', 'info'])
 
-    parser.add_argument('-p', '--partial', help="Use partially trained model")
+    parser.add_argument('-m', '--model', help="Use already trained model")
     parser.add_argument('-e', '--epochs', help='Number of training epoch', type=int, default=10)
     parser.add_argument('-s', '--samples', help='Number of samples generated for each epoch', type=int, default=500)
-    parser.add_argument('-t', '--test', metavar='PATH', help='Test model on given dataset', type=str)
-    return parser.parse_args()
+    parser.add_argument('-d', '--dataset', metavar='PATH', help='Test model on given dataset', type=str)
+
+    args = parser.parse_args()
+
+    if args.action == 'train':
+        if not (args.epochs and args.samples and args.dataset):
+            parser.error('Model training requires --epochs, --samples and --dataset arguments.')
+    if args.action == 'test':
+        if not (args.model and args.dataset):
+            parser.error('Model testing requires --model and --dataset arguments.')
+    if args.action == 'info':
+        if not args.model:
+            parser.error('Model info requires --model argument.')
+    
+    return args
 
 def save_model(model, path=None):
         # save model
@@ -127,40 +142,25 @@ def save_model(model, path=None):
         pickle.dump(model, file)   
 
 
-if __name__ == '__main__':
-    args = parse_args()
-    print(args)
+def test_model(model, dataset):
+    """Compute test scores of model on given dataset."""
+    input_shape = model.get_params()['module__input_shape']
 
-    if args.partial:
-        model = load_trained_model(args.partial)
-    else:
-        model = build_new_model(args)
+    # dataset = Dataset(args.test, use_mapping=LABELS_MAPPING)
+    # print('normalization:', dataset.normalize(0.07912221, 0.5338538))
 
-    if args.test:
-        vizualize_history(model)
+    # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
 
-        input_shape = model.get_params()['module__input_shape']
+    idx = np.array(range(0, len(dataset.y), 4))
+    iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257)
 
-        dataset = Dataset(args.test, use_mapping=LABELS_MAPPING)
-        dataset.normalize()
+    ys, y_preds = [], []
 
-        iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
-
-        idx = np.array(range(0, len(dataset.y), 4))
-        # print(len(idx), len(dataset.y))
-        iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257)
-
-        ys, y_preds = [], []
-
+    with tqdm(total=len(idx)) as progress:
         for (X, y) in iterator:
-            # print('--', X.shape)
-            X = resize(X, (X.shape[0],) + input_shape[1:])
-            # for i in range(len(y)):
-            #     if y[i] == 2:
-            #         # print('2')
-            #         plt.imshow(X[i])
-            #         plt.show()
-                    
+            progress.update(X.shape[0])
+
+            X = resize(X, (X.shape[0],) + input_shape[1:])                    
             X = X.reshape(-1, *input_shape)
             y = torch.from_numpy(y).long()
             
@@ -169,41 +169,55 @@ if __name__ == '__main__':
             ys.append(y)
             y_preds.append(y_pred)
 
-        y = np.concatenate(ys)
-        y_pred = np.concatenate(y_preds)
+    y = np.concatenate(ys)
+    y_pred = np.concatenate(y_preds)
 
-        print(X.shape, y.shape, y_pred.shape)
-        print(classification_report(y, y_pred))
-        print(confusion_matrix(y, y_pred))
-        
+    print(X.shape, y.shape, y_pred.shape)
+    print(classification_report(y, y_pred))
+    print(confusion_matrix(y, y_pred))
 
-    else:        
-        # print(model.history[:, 'train_loss'])
-        dataset = Dataset('data/converted/ch1-2018-11-20_10-20-34_0000006.wav.npz', use_mapping=LABELS_MAPPING)
-        print('normalization:', dataset.normalize())
 
-        input_shape = model.get_params()['module__input_shape']
+def train_model(model, dataset, args):
+    """Train given model on dataset."""
+    input_shape = model.get_params()['module__input_shape']
 
-        print('Generating new data samples')
+    # print('Generating new data samples')
+    
+    iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=512, balanced=True, shuffle=True)
 
-        
-        iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=512, balanced=True, shuffle=True)
+    try:
+        for epoch in range(args.epochs):
+            print(f"Starting epoch {epoch+1}/{args.epochs}")
+            for (X, y) in iterator:
+                X = resize(X, (X.shape[0],) + input_shape[1:])
+                X = X.reshape(-1, *input_shape)
+                y = torch.from_numpy(y).long()
 
-        try:
+                model.partial_fit(X, y)
 
-            for epoch in range(args.epochs):
-                print(f"Starting epoch {epoch+1}/{args.epochs}")
-                for (X, y) in iterator:
-                    print(X.shape)
-                    X = resize(X, (X.shape[0],) + input_shape[1:])
-                    # print(X.shape)
-                    X = X.reshape(-1, *input_shape)
-                    y = torch.from_numpy(y).long()
+                if model.history[-1,'valid_acc_best']:  # FIXME: use callbacks
+                    save_model(model)
 
-                    model.partial_fit(X, y)
+        vizualize_history(model)
+    finally:
+        save_model(model)
 
-                    if model.history[-1,'valid_acc_best']:
-                        save_model(model)
-            vizualize_history(model)
-        finally:
-            save_model(model)
+
+if __name__ == '__main__':
+    args = parse_args()
+    print(args)
+
+    if args.model:
+        model = load_trained_model(args.partial)
+    else:
+        model = build_new_model(args)
+
+    if args.dataset:
+        dataset = Dataset(args.dataset, use_mapping=LABELS_MAPPING)
+
+    if args.action == 'test':
+        test_model(model, dataset)
+    elif args.action == 'train':
+        train_model(model, dataset, args)
+    elif args.action == 'info':
+        vizualize_history(model)
