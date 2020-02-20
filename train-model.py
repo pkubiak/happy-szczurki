@@ -46,34 +46,33 @@ def build_new_model(args):
         optimizer=torch.optim.Adam
     )
 
+    # TODO: How do I apply L2 regularization?
     input_shape = (1, 65, 65)
 
-    net.set_params(module__input_shape=input_shape, module__layer_params=[
-        {
-            "output_size": 32,
-            "kernel_size": 5,
-            "stride": 1,
-            "padding": 2,
-            "max_pool_kernel": 3,
-            "max_pool_stride": 2
-        },
-        {
-            "output_size": 64,
-            "kernel_size": 5,
-            "stride": 1,
-            "padding": 2,
-            "max_pool_kernel": 3,
-            "max_pool_stride": 2
-        },
-        # {
-        #     "output_size": 128,
-        #     "kernel_size": 5,
-        #     "stride": 1,
-        #     "padding": 2,
-        #     "max_pool_kernel": 3,
-        #     "max_pool_stride": 2
-        # },
-    ], module__hidden_dim=[64, 64, 11])
+    net.set_params(
+        module__input_shape=input_shape,
+        module__classes=11,
+        module__conv_layers=[
+            dict(
+                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2),
+                activation='relu',
+                pool=dict(type='max', kernel_size=3, stride=2),
+                batch_norm=True,
+                dropout=0.1,
+            ),
+            dict(
+                conv=dict(out_channels=64, kernel_size=5, stride=1, padding=2),
+                activation='relu',
+                pool=dict(type='max', kernel_size=3, stride=2),
+                batch_norm=True,
+                dropout=0.1,
+            ),
+        ],
+        module__linear_layers=[
+            dict(out_features=64, activation='relu', dropout=0.1),
+            dict(out_features=64, activation='relu', dropout=0.1),
+        ]
+    )
 
     return net
 
@@ -145,19 +144,19 @@ def test_model(args):
 def train_model(args):
     """Train given model on dataset."""
     if args.model:
-        model = load_pickled_model(args.pickle)
+        model = load_pickled_model(args.model)
     else:
         model = build_new_model(args)
 
     dataset = Dataset(args.dataset, use_mapping=LABELS_MAPPING)
     input_shape = model.get_params()['module__input_shape']
 
-    # print('Generating new data samples')
+    output_path = f"trained_models/{datetime.now()}_%s.pkl"
     
-    iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=512, balanced=True, shuffle=True)
 
     try:
         for epoch in range(args.epochs):
+            iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=512, balanced=args.balanced, shuffle=True)
             print(f"Starting epoch {epoch+1}/{args.epochs}")
             for (X, y) in iterator:
                 X = resize(X, (X.shape[0],) + input_shape[1:])
@@ -166,12 +165,12 @@ def train_model(args):
 
                 model.partial_fit(X, y)
 
-                if model.history[-1,'valid_acc_best']:  # FIXME: use callbacks
-                    save_model(model)
+                if model.history[-1,'valid_loss_best']:  # FIXME: use callbacks
+                    save_model(model, output_path % 'best')
 
         vizualize_history(model)
     finally:
-        save_model(model)
+        save_model(model, output_path % 'final')
 
 
 def inspect_model(args):
@@ -187,11 +186,11 @@ def parse_args():
 
     # training
     parser_train = subparsers.add_parser('train', help='Train model instance')
-    parser_train.add_argument('-p', '--model', metavar='PATH', help='Use already trained model from pickle file')
+    parser_train.add_argument('-m', '--model', metavar='PATH', help='Use already trained model from pickle file')
     parser_train.add_argument('-d', '--dataset', metavar='PATH', help='Train model on given dataset', type=str, required=True)
     parser_train.add_argument('-e', '--epochs', metavar='N', help='Number of training epoch', type=int, default=5)
     parser_train.add_argument('-s', '--samples', metavar='N', help='Number of samples generated for each epoch', type=int, default=10000)
-    parser_train.add_argument('--balanced', metavar='BOOL', help='Perform balanced training (equalize class representants in each batch)', type=bool)
+    parser_train.add_argument('--balanced', metavar='BOOL', help='Perform balanced training (equalize class representants in each batch)', type=bool, default=True)
 
     parser_train.set_defaults(func=train_model)
 
@@ -203,6 +202,7 @@ def parse_args():
     parser_test = subparsers.add_parser('test', help='Test performance of trained model instance')
     parser_test.add_argument('-m', '--model', metavar='PATH', help='Path to already trained model instance in pickle file', required=True)
     parser_test.add_argument('-d', '--dataset', metavar='PATH', help='Test model on given dataset', type=str, required=True)
+    # TODO: save output to file 
 
     parser_test.set_defaults(func=test_model)
 
@@ -211,6 +211,9 @@ def parse_args():
     parser_inspect.add_argument('-m', '--model', metavar='PATH', help='Path to already trained model instance in pickle file', required=True)
 
     parser_inspect.set_defaults(func=inspect_model)
+
+    # TODO: annotate
+
 
     return parser.parse_args()
 
