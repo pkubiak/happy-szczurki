@@ -1,11 +1,36 @@
-Cython
+# Cython
+
+# The fundamental package for scientific computing with Python.
 numpy
+
+# machine learning in Python
 scikit-learn
+
+# Flexible and powerful data analysis / manipulation library for Python, providing labeled data structures similar to R data.frame objects, statistical functions, and much more
 pandas
+
+# Python library for audio and music analysis
 librosa
+
+# plotting with Python
 matplotlib
+
+# Statistical data visualization using matplotlib
 seaborn
-scipy
+
+# Image processing in Python 
+scikit-image 
+
+# scipy
+
+# Jupyter Interactive Notebook
 notebook
+
+# Tensors and Dynamic neural networks in Python with strong GPU acceleration
 torch
+
+# A scikit-learn compatible neural network library that wraps pytorch
 skorch
+
+# TensorFlow's Visualization Toolkit
+tensorboard
