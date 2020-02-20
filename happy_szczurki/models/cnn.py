@@ -38,7 +38,7 @@ class ConvNet(nn.Module):
         seq = nn.Sequential(*layers)
 
         conv_output_size = calculate_output_size(input_shape, seq)[1]
-        print('Calculated output size:', conv_output_size)
+        # print('Calculated output size:', conv_output_size)
 
         linear_layers_sizes = [conv_output_size] + hidden_dim
         for in_size, out_size in zip(linear_layers_sizes[0:], linear_layers_sizes[1:]):
