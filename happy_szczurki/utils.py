@@ -58,3 +58,49 @@ def smooth(x,window_len=11,window='hanning'):
 
     y=numpy.convolve(w/w.sum(),s,mode='valid')
     return y
+
+class Table:
+    def __init__(self, header):
+        assert all(isinstance(key, str) for key in header)
+        self.column_widths = [len(key) for key in header]
+        self.header = header
+        self.data = []
+        self.borders = '┏━┓┃'
+
+    def __lshift__(self, other):
+        assert len(other) == len(self.header)
+        self.data.append([str(value) for value in other])
+
+        for i in range(len(self.header)):
+            self.column_widths[i] = max(self.column_widths[i], len(self.data[-i][i]))
+
+    def _border_line(self, left, joiner, right, line='━'):
+        res = [left]
+        for i, width in enumerate(self.column_widths):
+            if i: res.append(joiner)
+            res.append(line*(width+2))
+        res.append(right)
+        return ''.join(res)
+
+    def __str__(self):
+        self.borders
+        # show header
+        res = [self._border_line('┏', '┳', '┓')]
+
+        line = '┃'
+        for width, key in zip(self.column_widths, self.header):
+            key = key.ljust(width)
+            line += f" {key} ┃"
+        res.append(line)
+        res.append(self._border_line('┣', '╋', '┫'))
+
+        
+        for row in self.data:
+            line = '┃'
+            for width, value in zip(self.column_widths, row):
+                value = value.ljust(width)
+                line += f" {value} ┃"
+            res.append(line)
+        res.append(self._border_line('┗', '┻', '┛'))
+
+        return "\n".join(res)
