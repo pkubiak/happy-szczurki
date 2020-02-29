@@ -14,3 +14,7 @@ LABELS_MAPPING = {
     'TR': 9,
     'RM': 10
 }
+
+REV_LABELS_MAPPING = {
+    value: key for key, value in LABELS_MAPPING.items()
+}

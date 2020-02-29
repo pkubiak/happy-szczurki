@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from skimage.transform import resize
 from sklearn.metrics import classification_report, confusion_matrix
 from skorch import NeuralNetClassifier
 from skorch.callbacks import Checkpoint, TensorBoard, TrainEndCheckpoint
@@ -47,24 +46,26 @@ def build_new_model(args):
         module__input_shape=input_shape,
         module__classes=11,
         module__conv_layers=[
+            # NOTE: https://towardsdatascience.com/dropout-on-convolutional-layers-is-weird-5c6ab14f19b2
+            #   suggest that dropout on CNN is wrong idea
             dict(
                 conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2),
                 activation='relu',
                 pool=dict(type='max', kernel_size=3, stride=2),
                 batch_norm=True,
-                dropout=0.2,
+                dropout=0.0,
             ),
             dict(
-                conv=dict(out_channels=64, kernel_size=5, stride=1, padding=2),
+                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2),
                 activation='relu',
                 pool=dict(type='max', kernel_size=3, stride=2),
                 batch_norm=True,
-                dropout=0.2,
+                dropout=0.0,
             ),
         ],
         module__linear_layers=[
-            dict(out_features=64, activation='relu', dropout=0.1),
-            dict(out_features=64, activation='relu', dropout=0.1),
+            dict(out_features=64, activation='relu', dropout=0.2),
+            dict(out_features=64, activation='relu', dropout=0.2),
         ]
     )
 
@@ -114,7 +115,7 @@ def test_model(args):
     # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
 
     idx = np.array(range(0, len(dataset.y), 4))
-    iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257)
+    iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257, resize_to=input_shape[1:])
 
     ys, y_preds = [], []
 
@@ -122,7 +123,6 @@ def test_model(args):
         for (X, y) in iterator:
             progress.update(X.shape[0])
 
-            X = resize(X, (X.shape[0],) + input_shape[1:])                    
             X = X.reshape(-1, *input_shape)
             y = torch.from_numpy(y).long()
             
@@ -154,10 +154,9 @@ def train_model(args):
 
     try:
         for epoch in range(args.epochs):
-            iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=1024, balanced=args.balanced, shuffle=True)
+            iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:])
             print(f"Starting epoch {epoch+1}/{args.epochs}")
             for (X, y) in iterator:
-                X = resize(X, (X.shape[0],) + input_shape[1:])
                 X = X.reshape(-1, *input_shape)
                 y = torch.from_numpy(y).long()
 
@@ -172,8 +171,6 @@ def train_model(args):
 
 
 def vizualize_filters(model):
-    print(model.module_.layers)
-
     for layer in model.module_.layers:
         if 'Conv2d' in str(type(layer)):
             weight = layer.weight
@@ -194,6 +191,11 @@ def vizualize_filters(model):
 
 def inspect_model(args):
     model = load_pickled_model(args.model)
+    # show model architecture
+    print(model.module_.layers)
+    params_count = sum([param.nelement() for param in model.module_.parameters()])
+    print(f"Number of parameters: {params_count}")
+
     vizualize_history(model)
     vizualize_filters(model)
 
@@ -210,6 +212,7 @@ def parse_args():
     parser_train.add_argument('-d', '--dataset', metavar='PATH', help='Train model on given dataset', type=str, required=True)
     parser_train.add_argument('-e', '--epochs', metavar='N', help='Number of training epoch', type=int, default=5)
     parser_train.add_argument('-s', '--samples', metavar='N', help='Number of samples generated for each epoch', type=int, default=10000)
+    parser_train.add_argument('-b', '--batch-size', metavar='N', help='Number of samples in each batch', type=int, default=512)
     parser_train.add_argument('--balanced', metavar='BOOL', help='Perform balanced training (equalize class representants in each batch)', type=bool, default=True)
 
     parser_train.set_defaults(func=train_model)

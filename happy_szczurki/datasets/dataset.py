@@ -5,6 +5,8 @@ from typing import Tuple, Optional, Dict
 import librosa
 import librosa.display
 import numpy as np
+from skimage.transform import resize
+
 
 
 class Dataset:
@@ -101,11 +103,12 @@ class Dataset:
         )
 
 class DatasetIterator:
-    def __init__(self, dataset, indices, *, batch_size=512, window_size=1, shuffle=False):
+    def __init__(self, dataset, indices, *, batch_size=512, window_size=1, shuffle=False, resize_to=None):
         self.dataset = dataset
         self.indices = np.array(indices)
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.resize_to = resize_to
 
         self.left_pad = (window_size + 1 )//2
         self.window_size = window_size
@@ -130,6 +133,8 @@ class DatasetIterator:
             indices_curr = indices[batch_idx: batch_idx + self.batch_size]
 
             X = np.array([self.X_padded[i: i + self.window_size] for i in indices_curr])
+            if self.resize_to:
+                X = resize(X, (X.shape[0],) + self.resize_to)                    
             y = self.dataset.y[indices_curr]
             
             yield X, y
