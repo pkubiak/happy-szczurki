@@ -1,4 +1,12 @@
 #! /bin/env python3
+"""
+PYTANIA:
+1. Jakie jest zastosowanie konwolucji 1x1
+2. Czy używać batch-normalization
+3. Czy dropout w Conv2D
+4. 
+"""
+
 import argparse
 import pickle
 from datetime import datetime
@@ -15,7 +23,7 @@ from tqdm import tqdm
 
 from happy_szczurki.datasets import Dataset, DatasetIterator, LABELS_MAPPING, REV_LABELS_MAPPING
 from happy_szczurki.models.cnn import ConvNet
-from happy_szczurki.utils import smooth
+from happy_szczurki.utils import smooth, Table
 
 
 def load_pickled_model(path):
@@ -42,6 +50,7 @@ def build_new_model(args):
     # TODO: How do I apply L2 regularization?
     input_shape = (1, 65, 65)
 
+    # NOTE: https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d
     net.set_params(
         module__input_shape=input_shape,
         module__classes=11,
@@ -62,15 +71,20 @@ def build_new_model(args):
                 batch_norm=True,
                 dropout=0.0,
             ),
+            dict(
+                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2),
+                activation='relu',
+                pool=dict(type='max', kernel_size=3, stride=2),
+                batch_norm=True,
+                dropout=0.05,
+            ),
         ],
         module__linear_layers=[
-            dict(out_features=64, activation='relu', dropout=0.3),
-            dict(out_features=64, activation='relu', dropout=0.3),
+            dict(out_features=64, activation='relu', dropout=0.2),
+            dict(out_features=64, activation='relu', dropout=0.2),
         ]
     )
 
-    # print(net.module_)
-    # breakpoint()
     writer.add_graph(net.module_, torch.zeros(size=(1, ) + input_shape))
 
     return net
@@ -110,40 +124,39 @@ def save_model(model, path=None):
 def test_model(args):
     """Compute test scores of model on given dataset."""
     model = load_pickled_model(args.model)
-    dataset = Dataset(args.dataset, use_mapping=LABELS_MAPPING)
 
-    input_shape = model.get_params()['module__input_shape']
+    for dataset_path in args.dataset:
+        dataset = Dataset(dataset_path, use_mapping=LABELS_MAPPING)
 
-    # dataset = Dataset(args.test, use_mapping=LABELS_MAPPING)
-    # print('normalization:', dataset.normalize(0.07912221, 0.5338538))
+        input_shape = model.get_params()['module__input_shape']
 
-    # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
+        # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
 
-    idx = np.array(range(0, len(dataset.y), 4))
-    iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257, resize_to=input_shape[1:])
+        idx = np.array(range(0, len(dataset.y), 4))
+        iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257, resize_to=input_shape[1:])
 
-    ys, y_preds = [], []
+        ys, y_preds = [], []
 
-    with tqdm(total=len(idx)) as progress:
-        for (X, y) in iterator:
-            progress.update(X.shape[0])
+        with tqdm(total=len(idx)) as progress:
+            for (X, y) in iterator:
+                progress.update(X.shape[0])
 
-            X = X.reshape(-1, *input_shape)
-            y = torch.from_numpy(y).long()
-            
-            y_pred = model.predict(X)
+                X = X.reshape(-1, *input_shape)
+                y = torch.from_numpy(y).long()
+                
+                y_pred = model.predict(X)
 
-            ys.append(y)
-            y_preds.append(y_pred)
+                ys.append(y)
+                y_preds.append(y_pred)
 
-    y = np.concatenate(ys)
-    y_pred = np.concatenate(y_preds)
+        y = np.concatenate(ys)
+        y_pred = np.concatenate(y_preds)
 
-    print(X.shape, y.shape, y_pred.shape)
+        print(X.shape, y.shape, y_pred.shape)
 
-    labels = list(REV_LABELS_MAPPING.keys())
-    print(classification_report(y, y_pred, labels=labels))
-    print(confusion_matrix(y, y_pred,labels=labels))
+        labels = list(REV_LABELS_MAPPING.keys())
+        print(classification_report(y, y_pred, labels=labels))
+        print(confusion_matrix(y, y_pred,labels=labels))
 
 def computer_model_norm(model, norm=2):
     norm_val = None
@@ -192,7 +205,6 @@ def vizualize_filters(model):
     for layer in model.module_.layers:
         if 'Conv2d' in str(type(layer)):
             weight = layer.weight
-            print(layer.weight.shape)
 
             _fig, axs = plt.subplots(8, 8)
             axs = [axs[i,j] for i in range(8) for j in range(8)]
@@ -210,9 +222,14 @@ def vizualize_filters(model):
 def inspect_model(args):
     model = load_pickled_model(args.model)
     # show model architecture
-    print(model.module_.layers)
-    params_count = sum([param.nelement() for param in model.module_.parameters()])
-    print(f"Number of parameters: {params_count}")
+    # print(model.module_.layers)
+    t = Table(['#', 'layer', 'params'])
+    for i, layer in enumerate(model.module_.layers):
+        t << (i, layer, sum(param.nelement() for param in layer.parameters()))
+    print(t)
+    
+    # params_count = sum([param.nelement() for param in model.module_.parameters()])
+    # print(f"Number of parameters: {params_count}")
 
     vizualize_history(model)
     vizualize_filters(model)
@@ -242,7 +259,7 @@ def parse_args():
     # testing
     parser_test = subparsers.add_parser('test', help='Test performance of trained model instance')
     parser_test.add_argument('-m', '--model', metavar='PATH', help='Path to already trained model instance in pickle file', required=True)
-    parser_test.add_argument('-d', '--dataset', metavar='PATH', help='Test model on given dataset', type=str, required=True)
+    parser_test.add_argument('-d', '--dataset', metavar='PATH', help='Test model on given dataset', type=str, nargs='+', required=True)
     # TODO: save output to file 
 
     parser_test.set_defaults(func=test_model)

@@ -65,14 +65,14 @@ class Table:
         self.column_widths = [len(key) for key in header]
         self.header = header
         self.data = []
-        self.borders = '┏━┓┃'
 
     def __lshift__(self, other):
+        other = [str(value) for value in other]
         assert len(other) == len(self.header)
-        self.data.append([str(value) for value in other])
+        self.data.append(other)
 
         for i in range(len(self.header)):
-            self.column_widths[i] = max(self.column_widths[i], len(self.data[-i][i]))
+            self.column_widths[i] = max(self.column_widths[i], len(other[i]))
 
     def _border_line(self, left, joiner, right, line='━'):
         res = [left]
@@ -83,8 +83,6 @@ class Table:
         return ''.join(res)
 
     def __str__(self):
-        self.borders
-        # show header
         res = [self._border_line('┏', '┳', '┓')]
 
         line = '┃'
@@ -102,5 +100,5 @@ class Table:
                 line += f" {value} ┃"
             res.append(line)
         res.append(self._border_line('┗', '┻', '┛'))
-
+        res.append('')
         return "\n".join(res)

@@ -56,7 +56,6 @@ class ConvNet(nn.Module):
         seq = nn.Sequential(*layers)
 
         in_features = calculate_output_size(input_shape, seq)[1]
-        # print('Calculated output size:', in_features)
 
         for layer in linear_layers:
             layers << nn.Linear(in_features, layer['out_features'])
