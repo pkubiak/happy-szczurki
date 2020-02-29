@@ -1,35 +1,22 @@
 #! /bin/env python3
-import pickle
 import argparse
-from tqdm import tqdm
+import pickle
 from datetime import datetime
 
-from happy_szczurki.models.cnn import ConvNet
-from happy_szczurki.datasets import Dataset, DatasetIterator
-from happy_szczurki.utils import smooth
-
-from skorch import NeuralNetClassifier
-from skorch.dataset import CVSplit
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
 from skimage.transform import resize
+from sklearn.metrics import classification_report, confusion_matrix
+from skorch import NeuralNetClassifier
+from skorch.callbacks import Checkpoint, TensorBoard, TrainEndCheckpoint
+from skorch.dataset import CVSplit
+from tqdm import tqdm
 
-from sklearn.metrics import confusion_matrix, classification_report
-
-LABELS_MAPPING = {
-    None: 0,
-    '22-kHz': 1,
-    'SH': 2,
-    'FM': 3,
-    'RP': 4,
-    'FL': 5,
-    'ST': 6,
-    'CMP': 7,
-    'IU': 8,
-    'TR': 9,
-    'RM': 10
-}
+from happy_szczurki.datasets import Dataset, DatasetIterator, LABELS_MAPPING
+from happy_szczurki.models.cnn import ConvNet
+from happy_szczurki.utils import smooth
 
 
 def load_pickled_model(path):
@@ -38,12 +25,19 @@ def load_pickled_model(path):
 
 
 def build_new_model(args):
+    # TODO: use checkpoints
+    # cp = Checkpoint(f_pickle='')
+    # train_end_cp = TrainEndCheckpoint(f_pickle='')
+    writer = SummaryWriter(f'runs/{datetime.now()}')
+    tensorboard = TensorBoard(writer)
+
     net = NeuralNetClassifier(
         ConvNet,
         max_epochs=1,
         lr=0.001,
-        train_split=CVSplit(3, stratified=False),
-        optimizer=torch.optim.Adam
+        train_split=CVSplit(3, stratified=True),
+        optimizer=torch.optim.Adam,
+        callbacks=[tensorboard],
     )
 
     # TODO: How do I apply L2 regularization?
@@ -58,14 +52,14 @@ def build_new_model(args):
                 activation='relu',
                 pool=dict(type='max', kernel_size=3, stride=2),
                 batch_norm=True,
-                dropout=0.1,
+                dropout=0.2,
             ),
             dict(
                 conv=dict(out_channels=64, kernel_size=5, stride=1, padding=2),
                 activation='relu',
                 pool=dict(type='max', kernel_size=3, stride=2),
                 batch_norm=True,
-                dropout=0.1,
+                dropout=0.2,
             ),
         ],
         module__linear_layers=[
@@ -73,6 +67,10 @@ def build_new_model(args):
             dict(out_features=64, activation='relu', dropout=0.1),
         ]
     )
+
+    # print(net.module_)
+    # breakpoint()
+    writer.add_graph(net.module_, torch.zeros(size=(1, ) + input_shape))
 
     return net
 
@@ -156,7 +154,7 @@ def train_model(args):
 
     try:
         for epoch in range(args.epochs):
-            iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=512, balanced=args.balanced, shuffle=True)
+            iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=1024, balanced=args.balanced, shuffle=True)
             print(f"Starting epoch {epoch+1}/{args.epochs}")
             for (X, y) in iterator:
                 X = resize(X, (X.shape[0],) + input_shape[1:])
@@ -173,9 +171,31 @@ def train_model(args):
         save_model(model, output_path % 'final')
 
 
+def vizualize_filters(model):
+    print(model.module_.layers)
+
+    for layer in model.module_.layers:
+        if 'Conv2d' in str(type(layer)):
+            weight = layer.weight
+            print(layer.weight.shape)
+
+            _fig, axs = plt.subplots(8, 8)
+            axs = [axs[i,j] for i in range(8) for j in range(8)]
+            idx = 0
+            for i in range(weight.shape[0]):
+                for j in range(weight.shape[1]):
+                    data = weight[i,j].detach().numpy()
+                    if idx < len(axs):
+                        axs[idx].imshow(data, cmap='gray')
+                    idx += 1
+            plt.suptitle(f"{layer}")
+            plt.show()
+
+
 def inspect_model(args):
     model = load_pickled_model(args.model)
     vizualize_history(model)
+    vizualize_filters(model)
 
 
 def parse_args():
