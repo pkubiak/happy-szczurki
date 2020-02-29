@@ -13,7 +13,7 @@ from skorch.callbacks import Checkpoint, TensorBoard, TrainEndCheckpoint
 from skorch.dataset import CVSplit
 from tqdm import tqdm
 
-from happy_szczurki.datasets import Dataset, DatasetIterator, LABELS_MAPPING
+from happy_szczurki.datasets import Dataset, DatasetIterator, LABELS_MAPPING, REV_LABELS_MAPPING
 from happy_szczurki.models.cnn import ConvNet
 from happy_szczurki.utils import smooth
 
@@ -64,8 +64,8 @@ def build_new_model(args):
             ),
         ],
         module__linear_layers=[
-            dict(out_features=64, activation='relu', dropout=0.2),
-            dict(out_features=64, activation='relu', dropout=0.2),
+            dict(out_features=64, activation='relu', dropout=0.3),
+            dict(out_features=64, activation='relu', dropout=0.3),
         ]
     )
 
@@ -87,7 +87,12 @@ def vizualize_history(model):
         X = list(range(1, len(values)+1))
         plt.plot(X, values, f"{c}-", label=metric)
         plt.plot(X, values_smooth, f"{c}:", label=f"{metric}_smooth")
-    
+
+    for c, metric in zip('ry', ('l1-norm', 'l2-norm')):
+        values = model.history[:, metric]
+        if values:
+            plt.plot(X, values / np.max(values), label=f"scaled {metric}")
+
     plt.legend()
     plt.show()
 
@@ -135,9 +140,19 @@ def test_model(args):
     y_pred = np.concatenate(y_preds)
 
     print(X.shape, y.shape, y_pred.shape)
-    print(classification_report(y, y_pred))
-    print(confusion_matrix(y, y_pred))
 
+    labels = list(REV_LABELS_MAPPING.keys())
+    print(classification_report(y, y_pred, labels=labels))
+    print(confusion_matrix(y, y_pred,labels=labels))
+
+def computer_model_norm(model, norm=2):
+    norm_val = None
+    for param in model.parameters():
+        if norm_val is None:
+            norm_val = param.norm(norm)
+        else:
+            norm_val += param.norm(norm)
+    return norm_val.detach().numpy()
 
 def train_model(args):
     """Train given model on dataset."""
@@ -161,6 +176,9 @@ def train_model(args):
                 y = torch.from_numpy(y).long()
 
                 model.partial_fit(X, y)
+
+                model.history.record('l1-norm', computer_model_norm(model.module_, 1.0))
+                model.history.record('l2-norm', computer_model_norm(model.module_, 2.0))
 
                 if model.history[-1,'valid_loss_best']:  # FIXME: use callbacks
                     save_model(model, output_path % 'best')
