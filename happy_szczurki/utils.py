@@ -1,4 +1,5 @@
 import numpy
+import torch
 
 def smooth(x,window_len=11,window='hanning'):
     """smooth the data using a window with requested size.
@@ -60,11 +61,13 @@ def smooth(x,window_len=11,window='hanning'):
     return y
 
 class Table:
-    def __init__(self, header):
+    def __init__(self, header, inner_frame=False, stripped=True):
         assert all(isinstance(key, str) for key in header)
         self.column_widths = [len(key) for key in header]
         self.header = header
         self.data = []
+        self.inner_frame = inner_frame
+        self.stripped = stripped
 
     def __lshift__(self, other):
         other = [str(value) for value in other]
@@ -72,7 +75,8 @@ class Table:
         self.data.append(other)
 
         for i in range(len(self.header)):
-            self.column_widths[i] = max(self.column_widths[i], len(other[i]))
+            width = max(len(line) for line in other[i].split("\n"))
+            self.column_widths[i] = max(self.column_widths[i], width)
 
     def _border_line(self, left, joiner, right, line='━'):
         res = [left]
@@ -92,13 +96,40 @@ class Table:
         res.append(line)
         res.append(self._border_line('┣', '╋', '┫'))
 
-        
-        for row in self.data:
-            line = '┃'
-            for width, value in zip(self.column_widths, row):
-                value = value.ljust(width)
-                line += f" {value} ┃"
-            res.append(line)
+        for i, row in enumerate(self.data):
+            if self.inner_frame and i:
+                res.append(self._border_line('┠', '╂', '┨', '╌'))
+                # res.append(self._border_line('┃', '┃', '┃', ' '))
+
+            row_lines = [cell.split("\n") for cell in row]
+            lines_count = max(len(cell) for cell in row_lines)
+
+            color = 236 if i%2 else 232
+            for line_no in range(lines_count):
+                line = f'\033[48;5;{color}m'if self.stripped else ''
+                line += '┃'
+                for width, cell in zip(self.column_widths, row_lines):
+                    value = cell[line_no] if line_no < len(cell) else ''
+                    value = value.ljust(width)
+                    line += f" {value} ┃"
+                if self.stripped:
+                    line += '\033[0m'
+                res.append(line)
+            # res.append(f'\033[48;5;{color}m\033[30m' + self._border_line('┃', '┃', '┃', '▄' if i%2 else '▀') + '\033[0m')
+            res.append(f'\033[48;5;{color}m' + self._border_line('┃', '┃', '┃', ' ') + '\033[0m')
+
         res.append(self._border_line('┗', '┻', '┛'))
         res.append('')
         return "\n".join(res)
+
+    
+def calculate_output_sizes(input_size, layers):
+    results = []
+    data = torch.zeros((1, ) + input_size)
+
+    for layer in layers:
+        data = layer(data)
+        output_size = data.shape[1:]
+        results.append(list(output_size))
+
+    return results
