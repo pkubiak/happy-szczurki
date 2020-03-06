@@ -49,10 +49,10 @@ def build_new_model(args, config, with_tensorboard=False):
     net = NeuralNetClassifier(
         getattr(module, class_name),
         max_epochs=1,
-        lr=0.0005,
+        lr=0.001,
         train_split=CVSplit(4, stratified=True),
         optimizer=torch.optim.Adam,
-        optimizer__weight_decay=0.001,
+        # optimizer__weight_decay=0.001,
         criterion=torch.nn.CrossEntropyLoss,
         # callbacks=[tensorboard],
     )
@@ -226,7 +226,6 @@ def train_model(args):
             content = input_.read()
             # HACK: Handle non-RFC compilant comments
             content = re.sub(r'//.*', '', content)
-            print(content)
             config = json.loads(content)
             model = build_new_model(args, config)
 
@@ -263,7 +262,7 @@ def train_model(args):
 
 
 def vizualize_filters(model):
-    for layer in model.module_.layers:
+    for layer_no, layer in enumerate(model.module_.layers):
         if 'Conv2d' in str(type(layer)):
             weight = layer.weight
 
@@ -276,7 +275,7 @@ def vizualize_filters(model):
                     if idx < len(axs):
                         axs[idx].imshow(data, cmap='gray')
                     idx += 1
-            plt.suptitle(f"{layer}")
+            plt.suptitle(f"Layer #{layer_no}: {layer}")
             plt.show()
 
 def inspect_model_layers(model):
@@ -286,8 +285,13 @@ def inspect_model_layers(model):
     input_shape = model.get_params()['module__input_shape']
     output_sizes = calculate_output_sizes(input_shape, model.module_.layers)
 
+    total_params = 0
     for i, (layer, shape) in enumerate(zip(model.module_.layers, output_sizes)):
-        t << (i, layer, sum(param.nelement() for param in layer.parameters()), shape)
+        total_params += (params := sum(param.nelement() for param in layer.parameters()))
+        t << (i, layer, params, shape)
+
+    t.insert_separator()
+    t << ('', 'Total parameters count:', total_params, '')
     print(t)
 
 

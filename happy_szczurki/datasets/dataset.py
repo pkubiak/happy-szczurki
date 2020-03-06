@@ -134,7 +134,7 @@ class DatasetIterator:
 
             X = np.array([self.X_padded[i: i + self.window_size] for i in indices_curr])
             if self.resize_to:
-                X = resize(X, [X.shape[0],] + self.resize_to)
+                X = resize(X, [X.shape[0]] + self.resize_to)
             y = self.dataset.y[indices_curr]
             
             yield X, y
