@@ -159,7 +159,10 @@ def create_classification_report(y_true, y_pred, format='text') -> str:
         if key == 'micro avg':
             table.insert_separator()
 
-        table << [key] + [values[metric] for metric in metrics]
+        if isinstance(values, dict):
+            table << [key] + [values[metric] for metric in metrics]
+        else:
+            table << [key] + ['', '', values, '']
     
     return str(table)
 
