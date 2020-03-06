@@ -1,6 +1,6 @@
 #! /bin/env python3
 """A wild RATTATA appeared!"""
-
+# TODO spotakn
 # Hide sklearn warnings
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -19,13 +19,13 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import classification_report, confusion_matrix
 from skorch import NeuralNetClassifier
-from skorch.callbacks import Checkpoint, TensorBoard, TrainEndCheckpoint
+from skorch.callbacks import Checkpoint, TensorBoard, TrainEndCheckpoint, EpochScoring
 from skorch.dataset import CVSplit
 from tqdm import tqdm
 
-from happy_szczurki.datasets import Dataset, DatasetIterator, LABELS_MAPPING, REV_LABELS_MAPPING
+from happy_szczurki.datasets import Dataset, DatasetIterator, CombinedIterator, LABELS_MAPPING, REV_LABELS_MAPPING
 from happy_szczurki.models.cnn import ConvNet
-from happy_szczurki.utils import smooth, Table
+from happy_szczurki.utils import smooth, Table, l1_norm, l2_norm
 
 
 def load_pickled_model(path):
@@ -45,25 +45,42 @@ def build_new_model(args, config, with_tensorboard=False):
     import importlib
     module = importlib.import_module(module_name)
 
+    weights = torch.tensor([0.07270509, 0.11412282, 0.14071414, 0.09184725, 0.11797501, 0.10059569, 0.09258242, 0.09322095, 0.15711534, 0.09252311, 0.24524606])
     net = NeuralNetClassifier(
         getattr(module, class_name),
         max_epochs=1,
         lr=0.001,
-        train_split=CVSplit(4, stratified=True),
+        train_split=CVSplit(3, stratified=True),
         optimizer=torch.optim.Adam,
         # optimizer__weight_decay=0.001,
         criterion=torch.nn.CrossEntropyLoss,
+        criterion__weight=weights,
+        # TODO: dosamplować przykłady: użyć biblioteki pythonowej: inbalance-learn, zamiast ważenia funkcji
+        # TODO: wyrzucić małe zbiory danych!
+        # TODO: pipeline z PCA
+        # TODO: StandardSCaler
+        # TODO: 1) pipeline[StandardScaler lub PCA(z whiten=True), SVM]
+        # TODO: 2) ML: StandardScaler, Model
+        # TODO: skalowanie danych, 
+        callbacks=[
+            # https://scikit-learn.org/stable/modules/model_evaluation.html
+            EpochScoring('f1_macro', lower_is_better=False),
+            EpochScoring('f1_micro', lower_is_better=False),
+            EpochScoring('f1_weighted', lower_is_better=False),
+            EpochScoring(l1_norm, name='l1_norm'),
+            EpochScoring(l2_norm, name='l2_norm'),
+        ]
         # callbacks=[tensorboard],
     )
 
     input_shape = tuple(config['module__input_shape'])
-    
     net.set_params(**config)
 
     # NOTE: https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d
     # NOTE: https://towardsdatascience.com/dropout-on-convolutional-layers-is-weird-5c6ab14f19b2
     #   suggest that dropout on CNN is wrong idea
 
+    # TODO: odfiltrować szum SVMem
     # TODO: smote 
     # TODO: globalne konwolucje
     # TODO: statystyki kroczące w BatchNorm, można dodać BatchNorm do liniowych warstw
@@ -83,9 +100,11 @@ def build_new_model(args, config, with_tensorboard=False):
     #  - SVM
     #  - SVM z PCA
     #  - prosty model od dr. Dudy (znajdowanie maksa w kolumnie)
+
     # TODO: spotkanie dr. Spurek - 12,14
     # TODO: Dekonwolucje
     # QUESTION: co trzeba zrobic do EEMLa
+
 
     if with_tensorboard:
         writer.add_graph(net.module_, torch.zeros(size=(1, ) + input_shape))
@@ -94,18 +113,19 @@ def build_new_model(args, config, with_tensorboard=False):
 
 
 def vizualize_history(model):
-    colors = 'cmg'
+    colors = 'cmgbk'
     
-    for c, metric in zip(colors, ('train_loss', 'valid_acc', 'valid_loss')):
+    for c, metric in zip(colors, ('train_loss', 'valid_acc', 'valid_loss', 'f1_macro', 'f1_weighted')):
         values = model.history[:, metric]
         window_size = min(len(values), 11)
         values_smooth = smooth(np.array(values), window_size, 'flat')[-len(values):]
 
         X = list(range(1, len(values)+1))
-        plt.plot(X, values, f"{c}-", label=metric)
+        if 'f1' not in metric:
+            plt.plot(X, values, f"{c}-", label=metric)
         plt.plot(X, values_smooth, f"{c}:", label=f"{metric}_smooth")
 
-    for c, metric in zip('ry', ('l1-norm', 'l2-norm')):
+    for c, metric in zip('ry', ('l1_norm', 'l2_norm')):
         values = model.history[:, metric]
         if values:
             plt.plot(X, values / np.max(values), label=f"scaled {metric}")
@@ -175,7 +195,7 @@ def test_model(args):
             # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
 
             idx = np.array(range(0, len(dataset.y), 5))
-            iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257, resize_to=input_shape[1:])
+            iterator = DatasetIterator(dataset, idx, batch_size=160, window_size=257, resize_to=input_shape[1:])
 
             ys, y_preds = [], []
 
@@ -206,16 +226,6 @@ def test_model(args):
             print(report, end="")
 
 
-def computer_model_norm(model, norm=2):
-    norm_val = None
-    for param in model.parameters():
-        if norm_val is None:
-            norm_val = param.norm(norm)
-        else:
-            norm_val += param.norm(norm)
-    return norm_val.detach().numpy()
-
-
 def train_model(args):
     """Train given model on dataset."""
     if args.model:
@@ -231,26 +241,36 @@ def train_model(args):
     inspect_model_layers(model)
 
     datasets = [Dataset(path, use_mapping=LABELS_MAPPING) for path in args.dataset]
+    # from collections import Counter
+    # res = Counter()
+    # for dataset in datasets:
+    #     res.update(dataset.support)
+    # suma = sum(res.values())
+    # weights = {k: v for k, v in res.items()}
+    # print(1 / np.log(np.array([weights[k] for k in range(11)])))
+
     input_shape = model.get_params()['module__input_shape']
 
     output_path = f"trained_models/{datetime.now()}_%s.pkl"
     
     try:
         for epoch in range(args.epochs):
-            dataset = random.choice(datasets)
-            iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:])
-
+            # dataset = random.choice(datasets)
+            iterators = [
+                dataset.sample_iterator(args.samples, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:])
+                for dataset in datasets
+            ]
+            # iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:])
+            iterator = CombinedIterator(iterators, window_size=257, batch_size=len(iterators)*args.batch_size, shuffle=True, resize_to=input_shape[1:])
+            # breakpoint()
             print(f"Starting epoch {epoch+1}/{args.epochs}")
             for (X, y) in iterator:
                 X = X.reshape(-1, *input_shape)
+                # from collections import Counter
+                # print(Counter(y).most_common())
                 y = torch.from_numpy(y).long()
 
                 model.partial_fit(X, y)
-
-                model.history.record('l1-norm', computer_model_norm(model.module_, 1.0))
-                l2 = computer_model_norm(model.module_, 2.0)
-                model.history.record('l2-norm', l2)
-                print(l2)
 
                 if model.history[-1,'valid_loss_best']:  # FIXME: use callbacks
                     save_model(model, output_path % 'best')
@@ -300,10 +320,11 @@ def inspect_model(args):
     # print(model.module_.layers)
     
     params = model.get_params()
+    print(params)
     t = Table(['key', 'value'])
     import pprint
     for key, value in params.items():
-        if key in ('optimizer_', 'criterion_',) or key.startswith('module__'):
+        if key in ('optimizer_', 'criterion_', 'module') or key.startswith('module__'):
             # print(key, value)
             t << (key, pprint.pformat(value))
     print(t)
