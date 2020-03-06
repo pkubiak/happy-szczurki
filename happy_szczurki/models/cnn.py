@@ -1,12 +1,6 @@
 import torch
 import torch.nn as nn
-
-
-def calculate_output_size(input_size, layer):
-    data_size = (1, ) + input_size  # 1 represents batch size
-    out = layer(torch.zeros(data_size))
-    
-    return out.size()
+from ..utils import calculate_output_sizes
 
 
 STR_TO_ACTIVATION = {
@@ -54,9 +48,7 @@ class ConvNet(nn.Module):
 
         layers << nn.Flatten()
 
-        seq = nn.Sequential(*layers)
-
-        in_features = calculate_output_size(input_shape, seq)[1]
+        in_features = calculate_output_sizes(input_shape, layers)[-1][0]
 
         for layer in linear_layers:
             layers << nn.Linear(in_features, layer['out_features'])

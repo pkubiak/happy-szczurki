@@ -171,7 +171,7 @@ class Table:
     
 def calculate_output_sizes(input_size, layers):
     results = []
-    data = torch.zeros((1, ) + input_size)
+    data = torch.zeros((1, ) + tuple(input_size))
 
     for layer in layers:
         data = layer(data)
@@ -179,3 +179,4 @@ def calculate_output_sizes(input_size, layers):
         results.append(list(output_size))
 
     return results
+

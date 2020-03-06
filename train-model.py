@@ -10,6 +10,8 @@ import argparse
 import pickle
 import random
 import os
+import json
+import re
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -32,15 +34,20 @@ def load_pickled_model(path):
         return pickle.load(file)
 
 
-def build_new_model(args):
+def build_new_model(args, config, with_tensorboard=False):
     # TODO: use checkpoints
     # cp = Checkpoint(f_pickle='')
     # train_end_cp = TrainEndCheckpoint(f_pickle='')
-    writer = SummaryWriter(f'runs/{datetime.now()}')
-    tensorboard = TensorBoard(writer)
+    if with_tensorboard:
+        writer = SummaryWriter(f'runs/{datetime.now()}')
+        tensorboard = TensorBoard(writer)
+
+    module_name, class_name = config.pop('module').rsplit('.', 1)
+    import importlib
+    module = importlib.import_module(module_name)
 
     net = NeuralNetClassifier(
-        ConvNet,
+        getattr(module, class_name),
         max_epochs=1,
         lr=0.0005,
         train_split=CVSplit(4, stratified=True),
@@ -50,59 +57,13 @@ def build_new_model(args):
         # callbacks=[tensorboard],
     )
 
-    # TODO: How do I apply L2 regularization?
-    input_shape = (1, 65, 65)
+    input_shape = tuple(config['module__input_shape'])
+    
+    net.set_params(**config)
 
     # NOTE: https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d
-    net.set_params(
-        # module__window_size=257,
-        module__input_shape=input_shape,
-        module__classes=11,
-        module__conv_layers=[
-            # NOTE: https://towardsdatascience.com/dropout-on-convolutional-layers-is-weird-5c6ab14f19b2
-            #   suggest that dropout on CNN is wrong idea
-            dict(
-                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2), # mniej filtrów
-                activation='relu',
-                # pool=dict(type='max', kernel_size=2, stride=2),
-                batch_norm=True,
-                dropout=0.0,
-            ),
-            dict(
-                conv=dict(out_channels=32, kernel_size=3, stride=2, padding=1), # ustawić stride 2
-                activation='relu',
-                # pool=dict(type='max', kernel_size=2, stride=2),
-                batch_norm=True,
-                dropout=0.0,
-            ),
-            dict(
-                conv=dict(out_channels=64, kernel_size=3, stride=2, padding=1), # wiecej filtrów
-                activation='relu',
-                # pool=dict(type='max', kernel_size=2, stride=2),
-                batch_norm=True,
-                dropout=0.0,
-            ),
-            dict(
-                conv=dict(out_channels=128, kernel_size=3, stride=2, padding=1), # wiecej filtrów
-                activation='relu',
-                batch_norm=True,
-                dropout=0.0,
-                # HACK: tutaj tracimy informację o położeniu aktywacji
-                # pool=dict(type='avg', kernel_size=5, stride=1),
-            ),
-            dict(
-                conv=dict(out_channels=16, kernel_size=1, stride=1, padding=0), # wiecej filtrów
-                activation='relu',
-                batch_norm=True,
-                dropout=0.0,
-                # pool=dict(type='avg', kernel_size=5, stride=1),
-            ),
-        ], # tu powinno wychodzić ok. 300
-        module__linear_layers=[
-            dict(out_features=300, activation='relu', dropout=0.5),
-            dict(out_features=64, activation='relu', dropout=0.5),
-        ]
-    )
+    # NOTE: https://towardsdatascience.com/dropout-on-convolutional-layers-is-weird-5c6ab14f19b2
+    #   suggest that dropout on CNN is wrong idea
 
     # TODO: smote 
     # TODO: globalne konwolucje
@@ -127,7 +88,8 @@ def build_new_model(args):
     # TODO: Dekonwolucje
     # QUESTION: co trzeba zrobic do EEMLa
 
-    # writer.add_graph(net.module_, torch.zeros(size=(1, ) + input_shape))
+    if with_tensorboard:
+        writer.add_graph(net.module_, torch.zeros(size=(1, ) + input_shape))
 
     return net
 
@@ -260,8 +222,15 @@ def train_model(args):
     if args.model:
         model = load_pickled_model(args.model)
     else:
-        model = build_new_model(args)
-        inspect_model_layers(model)
+        with open(args.config, 'r') as input_:
+            content = input_.read()
+            # HACK: Handle non-RFC compilant comments
+            content = re.sub(r'//.*', '', content)
+            print(content)
+            config = json.loads(content)
+            model = build_new_model(args, config)
+
+    inspect_model_layers(model)
 
     datasets = [Dataset(path, use_mapping=LABELS_MAPPING) for path in args.dataset]
     input_shape = model.get_params()['module__input_shape']
@@ -353,7 +322,11 @@ def parse_args():
 
     # training
     parser_train = subparsers.add_parser('train', help='Train model instance')
-    parser_train.add_argument('-m', '--model', metavar='PATH', help='Use already trained model from pickle file')
+    group = parser_train.add_mutually_exclusive_group(required=True)
+
+    group.add_argument('-m', '--model', metavar='PATH', help='Use already trained model from pickle file')
+    group.add_argument('-c', '--config', metavar='PATH', help='Path to JSON file with model parameters', type=str)
+
     parser_train.add_argument('-d', '--dataset', metavar='PATH', help='Train model on given datasets', nargs='+', type=str, required=True)
     parser_train.add_argument('-e', '--epochs', metavar='N', help='Number of training epoch', type=int, default=5)
     parser_train.add_argument('-s', '--samples', metavar='N', help='Number of samples generated for each epoch', type=int, default=10000)
@@ -364,7 +337,6 @@ def parse_args():
 
     # Unsupported arguments
     # parser.add_argument('-b', '--base-class', help="Model base class")
-    # parser.add_argument('-c', '--config', metavar='PATH', help='Path to JSON file with model parameters', type=str)
 
     # testing
     parser_test = subparsers.add_parser('test', help='Test performance of trained model instance')

@@ -1,0 +1,42 @@
+{
+    "module": "happy_szczurki.models.cnn.ConvNet",
+
+    "module__input_shape": [1, 65, 65],
+    "module__classes": 11,
+    "module__conv_layers": [
+        {
+            "conv": {"out_channels": 32, "kernel_size": 5, "stride": 1, "padding": 2},
+            "activation": "relu",
+            "batch_norm": true,
+            "dropout": 0.0
+        },
+        {
+            "conv": {"out_channels": 32, "kernel_size": 3, "stride": 2, "padding": 1},
+            "activation": "relu",
+            "batch_norm": true,
+            "dropout": 0.0
+        },
+        {
+            "conv": {"out_channels": 64, "kernel_size": 3, "stride": 2, "padding": 1},
+            "activation": "relu",
+            "batch_norm": true,
+            "dropout": 0.0
+        },
+        {
+            "conv": {"out_channels": 128, "kernel_size": 3, "stride": 2, "padding": 1},
+            "activation": "relu",
+            "batch_norm": true,
+            "dropout": 0.0
+        },
+        {
+            "conv": {"out_channels": 16, "kernel_size": 1, "stride": 1, "padding": 0},
+            "activation": "relu",
+            "batch_norm": true,
+            "dropout": 0.0
+        }
+    ], 
+    "module__linear_layers": [
+        {"out_features": 300, "activation": "relu", "dropout": 0.5},
+        {"out_features": 64, "activation": "relu", "dropout": 0.5}
+    ]
+}
