@@ -34,7 +34,10 @@ class ConvNet(nn.Module):
                 layers << nn.Dropout(p=layer['dropout'])
 
             if layer.get('batch_norm'):
-                layers << nn.BatchNorm2d(in_channels, track_running_stats=False)
+                layers << nn.BatchNorm2d(in_channels)#, track_running_stats=False)
+
+            if layer.get('instance_norm'):
+                layers << nn.InstanceNorm2d(in_channels, affine=True)
 
             if layer.get('activation'):
                 activation_fn = STR_TO_ACTIVATION[layer['activation']]

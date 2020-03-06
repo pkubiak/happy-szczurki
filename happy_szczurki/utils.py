@@ -180,3 +180,20 @@ def calculate_output_sizes(input_size, layers):
 
     return results
 
+
+def compute_model_norm(model, norm=2):
+    norm_val = None
+    for param in model.parameters():
+        if norm_val is None:
+            norm_val = param.norm(norm)
+        else:
+            norm_val += param.norm(norm)
+    return norm_val.detach().numpy()
+
+
+def l1_norm(net, X, y):
+    return compute_model_norm(net.module_, 1.0)
+
+
+def l2_norm(net, X, y):
+    return compute_model_norm(net.module_, 2.0)
