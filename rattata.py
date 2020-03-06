@@ -1,8 +1,7 @@
 #! /bin/env python3
-"""
-TODO:
-"""
-# Hide sklearn warning
+"""A wild RATTATA appeared!"""
+
+# Hide sklearn warnings
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 
@@ -319,7 +318,7 @@ def inspect_model(args):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description=__doc__)
     # parser.add_argument('-r', '--random-state', help='Initialize random state', )
 
     subparsers = parser.add_subparsers(dest='command', required=True)
@@ -357,7 +356,7 @@ def parse_args():
     parser_inspect.set_defaults(func=inspect_model)
 
     # TODO: annotate
-
+    parser_annotate = subparsers.add_parser('annotate', help='Create annotation file for given audio')
 
     return parser.parse_args()
 
