@@ -61,62 +61,108 @@ def smooth(x,window_len=11,window='hanning'):
     return y
 
 class Table:
-    def __init__(self, header, inner_frame=False, stripped=True):
-        assert all(isinstance(key, str) for key in header)
-        self.column_widths = [len(key) for key in header]
-        self.header = header
+    class Column:
+        ALIGNMENT = {
+            'left': str.ljust,
+            'center': str.center,
+            'right': str.rjust,
+        }
+
+        @property
+        def min_width(self):
+            return self.width
+        
+        @min_width.setter
+        def min_width(self, value):
+            self.width = max(self.width, value)
+
+        def __init__(self, name):
+            self.name = str(name)
+            self.width = len(self.name)
+            self.align = 'left'
+
+        def fit(self, text):
+            width = max(len(line) for line in text.split("\n"))
+            self.width = max(self.width, width)
+
+        def format(self, text):
+            return self.ALIGNMENT[self.align](text, self.width)[:self.width]
+
+
+    def __init__(self, header, title=None):
+        self.columns = [self.Column(key) for key in header]
         self.data = []
-        self.inner_frame = inner_frame
-        self.stripped = stripped
+        self.title = title
+
+    @staticmethod
+    def format(value):
+        if isinstance(value, float):
+            return f"{value:.4f}"
+        return str(value)
+
+    def insert_separator(self):
+        self.data.append(None)
 
     def __lshift__(self, other):
-        other = [str(value) for value in other]
-        assert len(other) == len(self.header)
+        other = [self.format(value) for value in other]
+        assert len(other) == len(self.columns)
         self.data.append(other)
 
-        for i in range(len(self.header)):
-            width = max(len(line) for line in other[i].split("\n"))
-            self.column_widths[i] = max(self.column_widths[i], width)
+        for column, value in zip(self.columns, other):
+            column.fit(value)
 
     def _border_line(self, left, joiner, right, line='━'):
         res = [left]
-        for i, width in enumerate(self.column_widths):
-            if i: res.append(joiner)
-            res.append(line*(width+2))
+        for i, column in enumerate(self.columns):
+            if i:
+                res.append(joiner)
+            res.append(line*(column.width+2))
         res.append(right)
         return ''.join(res)
 
     def __str__(self):
-        res = [self._border_line('┏', '┳', '┓')]
+        return self.render()
+
+    def render(self, format='text', inner_frame=False, stripped=True):
+        res = []
+        if self.title:
+            total_width = len(self.columns) + 1 + sum(column.width + 2 for column in self.columns)
+            res.append(str.center(self.title, total_width))
+    
+        res.append(self._border_line('┏', '┳', '┓'))
 
         line = '┃'
-        for width, key in zip(self.column_widths, self.header):
-            key = key.ljust(width)
-            line += f" {key} ┃"
+        for column in self.columns:
+            text = column.format(column.name)
+            line += f" {text} ┃"
         res.append(line)
         res.append(self._border_line('┣', '╋', '┫'))
 
         for i, row in enumerate(self.data):
-            if self.inner_frame and i:
+            if row is None:
+                res.append(self._border_line('┠', '╂', '┨', '╌'))
+                continue
+
+            if inner_frame and i:
                 res.append(self._border_line('┠', '╂', '┨', '╌'))
                 # res.append(self._border_line('┃', '┃', '┃', ' '))
+            
 
             row_lines = [cell.split("\n") for cell in row]
             lines_count = max(len(cell) for cell in row_lines)
 
             color = 236 if i%2 else 232
             for line_no in range(lines_count):
-                line = f'\033[48;5;{color}m'if self.stripped else ''
+                line = f'\033[48;5;{color}m' if stripped else ''
                 line += '┃'
-                for width, cell in zip(self.column_widths, row_lines):
+                for column, cell in zip(self.columns, row_lines):
                     value = cell[line_no] if line_no < len(cell) else ''
-                    value = value.ljust(width)
-                    line += f" {value} ┃"
-                if self.stripped:
+                    line += " %s ┃" % column.format(value)
+                if stripped:
                     line += '\033[0m'
                 res.append(line)
             # res.append(f'\033[48;5;{color}m\033[30m' + self._border_line('┃', '┃', '┃', '▄' if i%2 else '▀') + '\033[0m')
-            res.append(f'\033[48;5;{color}m' + self._border_line('┃', '┃', '┃', ' ') + '\033[0m')
+            # res.append(f'\033[48;5;{color}m' + self._border_line('┃', '┃', '┃', ' ') + '\033[0m')
 
         res.append(self._border_line('┗', '┻', '┛'))
         res.append('')

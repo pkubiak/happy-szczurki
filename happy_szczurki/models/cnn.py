@@ -15,6 +15,7 @@ STR_TO_ACTIVATION = {
 
 STR_TO_POOL = {
     'max': nn.MaxPool2d,
+    'avg': nn.AvgPool2d,
 }
 
 class ListWrapper(list):
@@ -39,7 +40,7 @@ class ConvNet(nn.Module):
                 layers << nn.Dropout(p=layer['dropout'])
 
             if layer.get('batch_norm'):
-                layers << nn.BatchNorm2d(in_channels)
+                layers << nn.BatchNorm2d(in_channels, track_running_stats=False)
 
             if layer.get('activation'):
                 activation_fn = STR_TO_ACTIVATION[layer['activation']]

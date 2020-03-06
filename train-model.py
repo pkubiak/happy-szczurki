@@ -1,14 +1,15 @@
 #! /bin/env python3
 """
-PYTANIA:
-1. Jakie jest zastosowanie konwolucji 1x1
-2. Czy używać batch-normalization
-3. Czy dropout w Conv2D
-4. 
+TODO:
 """
+# Hide sklearn warning
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 import argparse
 import pickle
+import random
+import os
 from datetime import datetime
 
 import matplotlib.pyplot as plt
@@ -41,10 +42,12 @@ def build_new_model(args):
     net = NeuralNetClassifier(
         ConvNet,
         max_epochs=1,
-        lr=0.001,
-        train_split=CVSplit(3, stratified=True),
+        lr=0.0005,
+        train_split=CVSplit(4, stratified=True),
         optimizer=torch.optim.Adam,
-        callbacks=[tensorboard],
+        optimizer__weight_decay=0.001,
+        criterion=torch.nn.CrossEntropyLoss,
+        # callbacks=[tensorboard],
     )
 
     # TODO: How do I apply L2 regularization?
@@ -52,40 +55,79 @@ def build_new_model(args):
 
     # NOTE: https://towardsdatascience.com/illustrated-10-cnn-architectures-95d78ace614d
     net.set_params(
+        # module__window_size=257,
         module__input_shape=input_shape,
         module__classes=11,
         module__conv_layers=[
             # NOTE: https://towardsdatascience.com/dropout-on-convolutional-layers-is-weird-5c6ab14f19b2
             #   suggest that dropout on CNN is wrong idea
             dict(
-                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2),
+                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2), # mniej filtrów
                 activation='relu',
-                pool=dict(type='max', kernel_size=3, stride=2),
+                # pool=dict(type='max', kernel_size=2, stride=2),
                 batch_norm=True,
                 dropout=0.0,
             ),
             dict(
-                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2),
+                conv=dict(out_channels=32, kernel_size=3, stride=2, padding=1), # ustawić stride 2
                 activation='relu',
-                pool=dict(type='max', kernel_size=3, stride=2),
+                # pool=dict(type='max', kernel_size=2, stride=2),
                 batch_norm=True,
                 dropout=0.0,
             ),
             dict(
-                conv=dict(out_channels=32, kernel_size=5, stride=1, padding=2),
+                conv=dict(out_channels=64, kernel_size=3, stride=2, padding=1), # wiecej filtrów
                 activation='relu',
-                pool=dict(type='max', kernel_size=3, stride=2),
+                # pool=dict(type='max', kernel_size=2, stride=2),
                 batch_norm=True,
-                dropout=0.05,
+                dropout=0.0,
             ),
-        ],
+            dict(
+                conv=dict(out_channels=128, kernel_size=3, stride=2, padding=1), # wiecej filtrów
+                activation='relu',
+                batch_norm=True,
+                dropout=0.0,
+                # HACK: tutaj tracimy informację o położeniu aktywacji
+                # pool=dict(type='avg', kernel_size=5, stride=1),
+            ),
+            dict(
+                conv=dict(out_channels=16, kernel_size=1, stride=1, padding=0), # wiecej filtrów
+                activation='relu',
+                batch_norm=True,
+                dropout=0.0,
+                # pool=dict(type='avg', kernel_size=5, stride=1),
+            ),
+        ], # tu powinno wychodzić ok. 300
         module__linear_layers=[
-            dict(out_features=64, activation='relu', dropout=0.2),
-            dict(out_features=64, activation='relu', dropout=0.2),
+            dict(out_features=300, activation='relu', dropout=0.5),
+            dict(out_features=64, activation='relu', dropout=0.5),
         ]
     )
 
-    writer.add_graph(net.module_, torch.zeros(size=(1, ) + input_shape))
+    # TODO: smote 
+    # TODO: globalne konwolucje
+    # TODO: statystyki kroczące w BatchNorm, można dodać BatchNorm do liniowych warstw
+    # TODO: sprawdzić czy filtr 5x5 pomaga, czy stridy pomagają
+    # TODO: EarlyStopping
+    # TODO: Learning Rate Scheduler / cosinus
+
+    # TODO: jak sobie radzic z niezbalansowanymi danymi
+    #  - data augmentation
+    #  - parametr `weight` do CrossEntropyLoss
+    
+    # TODO: Modele:
+    #  - CNN
+    #  - RCNN
+    #  - dwógłowy CNN
+    #  - LSTM 
+    #  - SVM
+    #  - SVM z PCA
+    #  - prosty model od dr. Dudy (znajdowanie maksa w kolumnie)
+    # TODO: spotkanie dr. Spurek - 12,14
+    # TODO: Dekonwolucje
+    # QUESTION: co trzeba zrobic do EEMLa
+
+    # writer.add_graph(net.module_, torch.zeros(size=(1, ) + input_shape))
 
     return net
 
@@ -121,42 +163,87 @@ def save_model(model, path=None):
         pickle.dump(model, file)   
 
 
+def create_classification_report(y_true, y_pred, format='text') -> str:
+    metrics = ['precision', 'recall', 'f1-score', 'support']
+    labels = list(REV_LABELS_MAPPING.keys())
+
+    table = Table([''] + metrics, title='Classification report')
+    for column in table.columns:
+        column.align = 'right'
+
+    for key, values in classification_report(y_true, y_pred, labels=labels, zero_division=0, output_dict=True).items():
+        if key.isdigit():
+            key = REV_LABELS_MAPPING[int(key)]
+
+        if key == 'micro avg':
+            table.insert_separator()
+
+        table << [key] + [values[metric] for metric in metrics]
+    
+    return str(table)
+
+
+def create_confusion_matrix(y_true, y_pred) -> str:
+    labels = list(REV_LABELS_MAPPING.keys())
+
+    table = Table(['true 𝈏 predicted'] + [REV_LABELS_MAPPING[key] for key in labels], title='Confusion matrix')
+    for column in table.columns:
+        column.align = 'right'
+        column.min_width = 3
+
+    for label, row in zip(labels, confusion_matrix(y_true, y_pred, labels=labels)):
+        table << ([REV_LABELS_MAPPING[label]] + list(row))
+    
+    return str(table)
+
+
 def test_model(args):
     """Compute test scores of model on given dataset."""
     model = load_pickled_model(args.model)
+    model_name = os.path.splitext(args.model)
+    report_path = model_name[0] + '_' + str(datetime.now()) + '.txt'
 
-    for dataset_path in args.dataset:
-        dataset = Dataset(dataset_path, use_mapping=LABELS_MAPPING)
+    with open(report_path, 'w') as output:
+        for dataset_path in args.dataset:
+            dataset_name = os.path.basename(dataset_path)
 
-        input_shape = model.get_params()['module__input_shape']
+            dataset = Dataset(dataset_path, use_mapping=LABELS_MAPPING)
 
-        # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
+            input_shape = model.get_params()['module__input_shape']
 
-        idx = np.array(range(0, len(dataset.y), 4))
-        iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257, resize_to=input_shape[1:])
+            # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
 
-        ys, y_preds = [], []
+            idx = np.array(range(0, len(dataset.y), 5))
+            iterator = DatasetIterator(dataset, idx, batch_size=512, window_size=257, resize_to=input_shape[1:])
 
-        with tqdm(total=len(idx)) as progress:
-            for (X, y) in iterator:
-                progress.update(X.shape[0])
+            ys, y_preds = [], []
 
-                X = X.reshape(-1, *input_shape)
-                y = torch.from_numpy(y).long()
-                
-                y_pred = model.predict(X)
+            with tqdm(total=len(idx), leave=False, desc=dataset_name) as progress:
+                for (X, y) in iterator:
+                    progress.update(X.shape[0])
 
-                ys.append(y)
-                y_preds.append(y_pred)
+                    X = X.reshape(-1, *input_shape)
+                    y = torch.from_numpy(y).long()
+                    
+                    y_pred = model.predict(X)
 
-        y = np.concatenate(ys)
-        y_pred = np.concatenate(y_preds)
+                    ys.append(y)
+                    y_preds.append(y_pred)
 
-        print(X.shape, y.shape, y_pred.shape)
+            y_true = np.concatenate(ys)
+            y_pred = np.concatenate(y_preds)
 
-        labels = list(REV_LABELS_MAPPING.keys())
-        print(classification_report(y, y_pred, labels=labels))
-        print(confusion_matrix(y, y_pred,labels=labels))
+            # Generate test report
+            report = "\n".join([
+                '\n',
+                f" Testing on {dataset_name} ".center(100, '-'),
+                '',
+                create_classification_report(y_true, y_pred),
+                create_confusion_matrix(y_true, y_pred),
+            ])
+            output.write(report)
+            print(report, end="")
+
 
 def computer_model_norm(model, norm=2):
     norm_val = None
@@ -167,22 +254,25 @@ def computer_model_norm(model, norm=2):
             norm_val += param.norm(norm)
     return norm_val.detach().numpy()
 
+
 def train_model(args):
     """Train given model on dataset."""
     if args.model:
         model = load_pickled_model(args.model)
     else:
         model = build_new_model(args)
+        inspect_model_layers(model)
 
-    dataset = Dataset(args.dataset, use_mapping=LABELS_MAPPING)
+    datasets = [Dataset(path, use_mapping=LABELS_MAPPING) for path in args.dataset]
     input_shape = model.get_params()['module__input_shape']
 
     output_path = f"trained_models/{datetime.now()}_%s.pkl"
     
-
     try:
         for epoch in range(args.epochs):
+            dataset = random.choice(datasets)
             iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:])
+
             print(f"Starting epoch {epoch+1}/{args.epochs}")
             for (X, y) in iterator:
                 X = X.reshape(-1, *input_shape)
@@ -191,7 +281,9 @@ def train_model(args):
                 model.partial_fit(X, y)
 
                 model.history.record('l1-norm', computer_model_norm(model.module_, 1.0))
-                model.history.record('l2-norm', computer_model_norm(model.module_, 2.0))
+                l2 = computer_model_norm(model.module_, 2.0)
+                model.history.record('l2-norm', l2)
+                print(l2)
 
                 if model.history[-1,'valid_loss_best']:  # FIXME: use callbacks
                     save_model(model, output_path % 'best')
@@ -218,16 +310,34 @@ def vizualize_filters(model):
             plt.suptitle(f"{layer}")
             plt.show()
 
+def inspect_model_layers(model):
+    t = Table(['#', 'layer', 'params', 'output_shape'])
+
+    from happy_szczurki.utils import calculate_output_sizes
+    input_shape = model.get_params()['module__input_shape']
+    output_sizes = calculate_output_sizes(input_shape, model.module_.layers)
+
+    for i, (layer, shape) in enumerate(zip(model.module_.layers, output_sizes)):
+        t << (i, layer, sum(param.nelement() for param in layer.parameters()), shape)
+    print(t)
+
 
 def inspect_model(args):
     model = load_pickled_model(args.model)
     # show model architecture
     # print(model.module_.layers)
-    t = Table(['#', 'layer', 'params'])
-    for i, layer in enumerate(model.module_.layers):
-        t << (i, layer, sum(param.nelement() for param in layer.parameters()))
-    print(t)
     
+    params = model.get_params()
+    t = Table(['key', 'value'])
+    import pprint
+    for key, value in params.items():
+        if key in ('optimizer_', 'criterion_',) or key.startswith('module__'):
+            # print(key, value)
+            t << (key, pprint.pformat(value))
+    print(t)
+
+    inspect_model_layers(model)
+       
     # params_count = sum([param.nelement() for param in model.module_.parameters()])
     # print(f"Number of parameters: {params_count}")
 
@@ -244,7 +354,7 @@ def parse_args():
     # training
     parser_train = subparsers.add_parser('train', help='Train model instance')
     parser_train.add_argument('-m', '--model', metavar='PATH', help='Use already trained model from pickle file')
-    parser_train.add_argument('-d', '--dataset', metavar='PATH', help='Train model on given dataset', type=str, required=True)
+    parser_train.add_argument('-d', '--dataset', metavar='PATH', help='Train model on given datasets', nargs='+', type=str, required=True)
     parser_train.add_argument('-e', '--epochs', metavar='N', help='Number of training epoch', type=int, default=5)
     parser_train.add_argument('-s', '--samples', metavar='N', help='Number of samples generated for each epoch', type=int, default=10000)
     parser_train.add_argument('-b', '--batch-size', metavar='N', help='Number of samples in each batch', type=int, default=512)
@@ -278,6 +388,6 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    print(args)
+    print(args, end="\n\n")
 
     args.func(args)
