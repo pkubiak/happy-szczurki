@@ -2,10 +2,38 @@
 
 ## :rocket: Installation ##
 
-At first install `happy_szczurki` package:
-```
-pip install -e .
-```
+1. Create virtualenv (with python `3.8.1`):
+    ```bash
+    pyenv install 3.8.1
+    pyenv virtualenv 3.8.1 <name>
+    pyenv activate <name>
+    ```
+
+2. Install proper version of pytorch (https://pytorch.org/):
+    For CPU version:
+
+    ```bash
+    pip3 install torch==1.4.0+cpu torchvision==0.5.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
+    ```
+
+    For GPU version:
+
+    ```bash
+    TBA
+    ```
+
+3. Install requirements:
+    ```bash
+    pip3 install -r requirements.txt
+    ```
+
+4. Install `happy_szczurki` package:
+    ```bash
+    pip3 install -e .
+    ```
+
+5. Optional hotfix in `skorch` library.
+
 
 ## :mortar_board: Knowledge  ##
 
