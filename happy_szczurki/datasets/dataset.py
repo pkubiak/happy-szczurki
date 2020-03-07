@@ -127,15 +127,21 @@ class Dataset:
         )
 
     def window(self, idx, window_size):
-        left_pad = (window_size + 1 )//2
-        data = self.X[
-            max(0, idx - left_pad):
-            min(idx - left_pad + window_size, len(self.X) - 1)
-        ]
-        left_pad = max(-(idx - left_pad), 0)
-        right_pad = max(idx - left_pad + window_size - len(self.X) + 1, 0)
+        left_offset = (window_size + 1 )//2
 
-        return np.pad(data, pad_width=[(left_pad, right_pad), (0, 0)], mode='edge')
+        data = self.X[
+            max(0, idx - left_offset):
+            min(idx - left_offset + window_size, len(self.X) - 1)
+        ]
+
+        left_pad = max(-(idx - left_offset), 0)
+        right_pad = max((idx - left_offset + window_size) - (len(self.X) - 1), 0)
+
+        data = np.pad(data, pad_width=[(left_pad, right_pad), (0, 0)], mode='edge')
+
+        assert data.shape[0] == window_size
+
+        return data
 
 class DatasetIterator:
     def _get_window(self, idx):
