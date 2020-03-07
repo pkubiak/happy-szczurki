@@ -1,6 +1,8 @@
 #! /bin/env python3
 """A wild RATTATA appeared!"""
-# TODO spotakn
+# QUESTION: dlaczego wraz z kolejnymi epokami, rośnie czas uczenia?
+# TODO: Sprawdzić jak BatchNorm działa jeżeli zmienia się rozkład danych.
+
 # Hide sklearn warnings
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -17,7 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch.utils.tensorboard import SummaryWriter
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 from skorch import NeuralNetClassifier
 from skorch.callbacks import Checkpoint, TensorBoard, TrainEndCheckpoint, EpochScoring
 from skorch.dataset import CVSplit
@@ -156,13 +158,15 @@ def create_classification_report(y_true, y_pred, format='text') -> str:
         if key.isdigit():
             key = REV_LABELS_MAPPING[int(key)]
 
-        if key == 'micro avg':
+        if key in {'micro avg', 'accuract'}:
             table.insert_separator()
+            table << ['accuracy', '', '', accuracy_score(y_true, y_pred), len(y_true)]
+            continue
 
         if isinstance(values, dict):
             table << [key] + [values[metric] for metric in metrics]
         else:
-            table << [key] + ['', '', values, '']
+            table << [key, '', '', values, '']
     
     return str(table)
 
@@ -195,10 +199,9 @@ def test_model(args):
 
             input_shape = model.get_params()['module__input_shape']
 
-            # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
-
             idx = np.array(range(0, len(dataset.y), 5))
-            iterator = DatasetIterator(dataset, idx, batch_size=160, window_size=257, resize_to=input_shape[1:])
+
+            iterator = DatasetIterator(dataset, idx, batch_size=2048, window_size=257, resize_to=input_shape[1:])
 
             ys, y_preds = [], []
 
