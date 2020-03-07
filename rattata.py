@@ -1,4 +1,4 @@
-#! /bin/env python3
+#! /usr/bin/env python3
 """A wild RATTATA appeared!"""
 # QUESTION: dlaczego wraz z kolejnymi epokami, rośnie czas uczenia?
 # TODO: Sprawdzić jak BatchNorm działa jeżeli zmienia się rozkład danych.
@@ -199,16 +199,14 @@ def test_model(args):
 
             input_shape = model.get_params()['module__input_shape']
 
-            idx = np.array(range(0, len(dataset.y), 5))
 
+            idx = np.array(range(0, len(dataset.y), 5))
             iterator = DatasetIterator(dataset, idx, batch_size=2048, window_size=257, resize_to=input_shape[1:])
 
             ys, y_preds = [], []
 
             with tqdm(total=len(idx), leave=False, desc=dataset_name) as progress:
                 for (X, y) in iterator:
-                    progress.update(X.shape[0])
-
                     X = X.reshape(-1, *input_shape)
                     y = torch.from_numpy(y).long()
                     
@@ -216,6 +214,8 @@ def test_model(args):
 
                     ys.append(y)
                     y_preds.append(y_pred)
+
+                    progress.update(X.shape[0])
 
             y_true = np.concatenate(ys)
             y_pred = np.concatenate(y_preds)
