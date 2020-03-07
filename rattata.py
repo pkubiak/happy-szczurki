@@ -1,4 +1,4 @@
-#! /bin/env python3
+#! /usr/bin/env python3
 """A wild RATTATA appeared!"""
 # TODO spotakn
 # Hide sklearn warnings
@@ -198,14 +198,12 @@ def test_model(args):
             # iterator = dataset.sample_iterator(args.samples, balanced=True, window_size=257, random_state=42)
 
             idx = np.array(range(0, len(dataset.y), 5))
-            iterator = DatasetIterator(dataset, idx, batch_size=160, window_size=257, resize_to=input_shape[1:])
+            iterator = DatasetIterator(dataset, idx, batch_size=2048, window_size=257, resize_to=input_shape[1:])
 
             ys, y_preds = [], []
 
             with tqdm(total=len(idx), leave=False, desc=dataset_name) as progress:
                 for (X, y) in iterator:
-                    progress.update(X.shape[0])
-
                     X = X.reshape(-1, *input_shape)
                     y = torch.from_numpy(y).long()
                     
@@ -213,6 +211,8 @@ def test_model(args):
 
                     ys.append(y)
                     y_preds.append(y_pred)
+
+                    progress.update(X.shape[0])
 
             y_true = np.concatenate(ys)
             y_pred = np.concatenate(y_preds)
