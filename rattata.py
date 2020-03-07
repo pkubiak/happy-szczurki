@@ -50,7 +50,7 @@ def build_new_model(args, config, with_tensorboard=False):
         getattr(module, class_name),
         max_epochs=1,
         lr=0.001,
-        train_split=CVSplit(3, stratified=True),
+        train_split=CVSplit(4, stratified=True),
         optimizer=torch.optim.Adam,
         # optimizer__weight_decay=0.001,
         criterion=torch.nn.CrossEntropyLoss,
@@ -256,27 +256,21 @@ def train_model(args):
 
     output_path = f"trained_models/{datetime.now()}_%s.pkl"
     
+    iterator = iter(CombinedIterator(datasets, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:]))
     try:
         for epoch in range(args.epochs):
-            # dataset = random.choice(datasets)
-            iterators = [
-                dataset.sample_iterator(args.samples, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:])
-                for dataset in datasets
-            ]
-            # iterator = dataset.sample_iterator(args.samples, window_size=257, batch_size=args.batch_size, balanced=args.balanced, shuffle=True, resize_to=input_shape[1:])
-            iterator = CombinedIterator(iterators, window_size=257, batch_size=len(iterators)*args.batch_size, shuffle=True, resize_to=input_shape[1:])
-            # breakpoint()
             print(f"Starting epoch {epoch+1}/{args.epochs}")
-            for (X, y) in iterator:
-                X = X.reshape(-1, *input_shape)
-                # from collections import Counter
-                # print(Counter(y).most_common())
-                y = torch.from_numpy(y).long()
 
-                model.partial_fit(X, y)
+            X, y = next(iterator)
+            X = X.reshape(-1, *input_shape)
+            from collections import Counter
+            print(Counter(y).most_common())
+            y = torch.from_numpy(y).long()
 
-                if model.history[-1,'valid_loss_best']:  # FIXME: use callbacks
-                    save_model(model, output_path % 'best')
+            model.partial_fit(X, y)
+
+            if model.history[-1,'valid_loss_best']:  # FIXME: use callbacks
+                save_model(model, output_path % 'best')
 
         vizualize_history(model)
     finally:

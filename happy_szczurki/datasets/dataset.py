@@ -99,8 +99,9 @@ class Dataset:
                 bins[i] = np.array(list(bins[i]))
             
             class_count = len(bins)
-            classes = list(bins.keys()) * ((n + class_count - 1) // class_count)
-            classes = np.array(classes)[:n]
+            classes = np.array(list(bins.keys()) * ((n + class_count - 1) // class_count))
+            np.random.shuffle(classes)
+            classes = classes[:n]
 
             idx = np.zeros(n, dtype=int)
             for i in range(n):
@@ -124,6 +125,17 @@ class Dataset:
             hop_length=self.meta['hop_length'],
             n_fft=self.meta['n_fft']
         )
+
+    def window(self, idx, window_size):
+        left_pad = (window_size + 1 )//2
+        data = self.X[
+            max(0, idx - left_pad):
+            min(idx - left_pad + window_size, len(self.X) - 1)
+        ]
+        left_pad = max(-(idx - left_pad), 0)
+        right_pad = max(idx - left_pad + window_size - len(self.X) + 1, 0)
+
+        return np.pad(data, pad_width=[(left_pad, right_pad), (0, 0)], mode='edge')
 
 class DatasetIterator:
     def _get_window(self, idx):
@@ -172,38 +184,49 @@ class DatasetIterator:
             
             yield X, y
 
+from collections import defaultdict
 
 class CombinedIterator:
-    def __init__(self, iterators, *, batch_size=512, window_size=1, shuffle=False, resize_to=None):
-        self.iterators = iterators
-        self.indices = []
-        for i in range(len(iterators)):
-            for j in iterators[i].indices:
-                self.indices.append((i, j))
-        self.indices = np.array(self.indices)
-        # z = Counter()
-        # for i, j in self.indices:
-        #     z[self.iterators[i].dataset.y[j]] += 1
-        # print('>>', z.most_common())
-        # print(self.indices)
-
+    def __init__(self, datasets, *, batch_size=512, window_size=1, shuffle=False, resize_to=None, balanced=True):
+        self.datasets = datasets
         self.batch_size = batch_size
         self.window_size = window_size
         self.shuffle = shuffle
         self.resize_to = resize_to
+        self.balanced = balanced
+
+        self.indices = np.concatenate([[(i, j) for j in range(len(dataset.y))] for i, dataset in enumerate(datasets)])
+
+        self.classes = defaultdict(set)
+        for i, (dataset_id, idx) in enumerate(self.indices):
+            class_id = self.datasets[dataset_id].y[idx]
+            self.classes[class_id].add(i)
+
+        for key, value in self.classes.items():
+            self.classes[key] = np.array(list(value))
 
     def __iter__(self):
-        indices = np.array(self.indices)
+        while True:
+            if self.balanced:
+                n = len(self.classes)
 
-        if self.shuffle:
-            np.random.shuffle(indices)
+                class_ids = list(self.classes.keys()) * (self.batch_size // n)
+                remains = np.array(list(self.classes.keys()))
+                np.random.shuffle(remains)
+                class_ids += list(remains)[:self.batch_size % n]
+                class_ids = np.array(class_ids)
+                np.random.shuffle(class_ids)
 
-        for batch_idx in range(0, len(indices), self.batch_size):
-            indices_curr = indices[batch_idx: batch_idx + self.batch_size]
+                idx = np.array([np.random.choice(self.classes[i], 1)[0] for i in class_ids[:self.batch_size]])
+                indices = self.indices[idx]
+            else:
+                indices = np.random.choice(self.indices, self.batch_size)
 
-            X = np.array([self.iterators[i]._get_window(j) for (i, j) in indices_curr])
+            X = np.array([self.datasets[i].window(j, self.window_size) for (i, j) in indices])
+
             if self.resize_to:
                 X = resize(X, [X.shape[0]] + list(self.resize_to))
-            y = np.array([self.iterators[i].dataset.y[j] for (i, j) in indices_curr])
+
+            y = np.array([self.datasets[i].y[j] for (i, j) in indices])
             
             yield X, y
